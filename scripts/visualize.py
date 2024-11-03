@@ -9,6 +9,8 @@ from matplotlib.backend_bases import MouseEvent, MouseButton
 from matplotlib.widgets import Button
 from pandas import DataFrame, read_csv
 
+# from describe import Statistics
+
 
 class Visualizer:
     """Handle visualization of datas."""
@@ -20,7 +22,11 @@ class Visualizer:
         self._fig.set_facecolor("0.85")
         (self._xaxis, self._yaxis) = (2, 2)
         self._button: list[Button] = list(self._generate_buttons())
-        self._plot: Axes = self._fig.add_axes([0.03, 0.13, 1 - 0.06, 1 - 0.2])
+        self._plot: Axes = self._fig.add_axes([0.03, 0.13, 0.8, 0.8])
+        self._stats: Axes = self._fig.add_axes([0.855, 0.13, 0.12, 0.8])
+        self._stats.set_yticks([])
+        self._stats.set_xticks([])
+        self._stats.text(0, 0, "Hello World")
         self._update_buttons()
         self._update_plot()
 
@@ -103,7 +109,7 @@ def main() -> None:
     """Visualizes csv dataset."""
     try:
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
-        parser.add_argument("data", help="csv dataset to visualize")
+        parser.add_argument("data", help="csv dataset")
         data = read_csv(parser.parse_args().data, header=None)
         visualizer = Visualizer(data)
         visualizer.show()
