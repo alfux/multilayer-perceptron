@@ -145,14 +145,17 @@ def main() -> None:
     try:
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
         parser.add_argument("data", help="csv dataset")
-        parser.add_argument("drop", nargs="*", type=int, default=0)
-        parser.add_argument("-s", "--start", type=int, default=1)
-        parser.add_argument("-n", "--no-header", action="store_true")
+        parser.add_argument("drop", help="columns to drop, as an int index",
+                            nargs="*", type=int, default=0)
+        parser.add_argument("-t", "--trait", help="column of observed traits",
+                            type=int, default=1)
+        parser.add_argument("-n", "--no-header", help="first line is data",
+                            action="store_true")
         if parser.parse_args().no_header:
             data = read_csv(parser.parse_args().data, header=None)
         else:
             data = read_csv(parser.parse_args().data)
-        visualizer = Visualizer(data, parser.parse_args().start,
+        visualizer = Visualizer(data, parser.parse_args().trait,
                                 parser.parse_args().drop)
         visualizer.show()
     except Exception as err:
