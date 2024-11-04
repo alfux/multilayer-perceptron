@@ -1,11 +1,9 @@
 import argparse as arg
 import sys
-import traceback
 from typing import Self, Generator
 
 import numpy as np
-import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, read_csv
 
 
 class Statistics:
@@ -55,12 +53,11 @@ def main() -> None:
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("-n", "--no-header", action="store_true")
         if parser.parse_args().no_header:
-            data = pd.read_csv(parser.parse_args().data, header=None)
+            data = read_csv(parser.parse_args().data, header=None)
         else:
-            data = pd.read_csv(parser.parse_args().data)
+            data = read_csv(parser.parse_args().data)
         print(Statistics(data.select_dtypes([float, int])).stats)
     except Exception as err:
-        print(traceback.format_exc())
         print(f"Error: {err.__class__.__name__}: {err}", file=sys.stderr)
 
 
