@@ -1,6 +1,7 @@
 import argparse as arg
 import sys
 from typing import Self, Generator, Callable
+import warnings
 
 import matplotlib.pyplot as plt
 from matplotlib.text import Text
@@ -35,8 +36,9 @@ class Visualizer:
         """Renames dataframe's headers."""
         head = {k: v for (k, v) in zip(data.columns, range(len(data.columns)))}
         data.rename(head, axis=1, inplace=True)
+        traits = data[traits]
         data.drop(drop, axis=1, inplace=True)
-        data = pd.concat([data[traits], data.select_dtypes("number")], axis=1)
+        data = pd.concat([traits, data.select_dtypes("number")], axis=1)
         head = {k: v for (k, v) in zip(data.columns, range(len(data.columns)))}
         return data.rename(head, axis=1)
 
@@ -143,6 +145,7 @@ class Visualizer:
 def main() -> None:
     """Visualizes csv dataset."""
     try:
+        warnings.filterwarnings(action="ignore")
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("drop", help="columns to drop, as an int index",
