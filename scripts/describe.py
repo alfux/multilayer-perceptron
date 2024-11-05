@@ -3,7 +3,8 @@ import sys
 from typing import Self, Generator
 
 import numpy as np
-from pandas import DataFrame, Series, read_csv
+import pandas as pd
+from pandas import DataFrame, Series
 
 
 class Statistics:
@@ -53,9 +54,9 @@ def main() -> None:
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("-n", "--no-header", action="store_true")
         if parser.parse_args().no_header:
-            data = read_csv(parser.parse_args().data, header=None)
+            data = pd.read_csv(parser.parse_args().data, header=None)
         else:
-            data = read_csv(parser.parse_args().data)
+            data = pd.read_csv(parser.parse_args().data)
         print(Statistics(data.select_dtypes([float, int])).stats)
     except Exception as err:
         print(f"Error: {err.__class__.__name__}: {err}", file=sys.stderr)

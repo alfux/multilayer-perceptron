@@ -1,7 +1,6 @@
 import argparse as arg
 import sys
 from typing import Self, Generator, Callable
-import warnings
 
 import matplotlib.pyplot as plt
 from matplotlib.text import Text
@@ -9,20 +8,28 @@ from matplotlib.axes import Axes
 from matplotlib.backend_bases import MouseEvent, MouseButton
 from matplotlib.widgets import Button
 import pandas as pd
-from pandas import DataFrame, read_csv
+from pandas import DataFrame
 
 from describe import Statistics
+from pair_plot import PairPlot
 
 
 class Visualizer:
     """Handle visualization of datas."""
 
-    def __init__(self: Self, data: DataFrame, start: int, drop: list) -> None:
+    def __init__(self: Self, data: DataFrame, **kwargs: dict) -> None:
         """Initializes the figue."""
-        self._data = self._rename(data, start, drop)
+        if "remap" in kwargs:
+            self._data = data
+            self._remap = kwargs["remap"]
+        else:
+            trait = kwargs["trait"] if "trait" in kwargs else 1
+            drop = kwargs["drop"] if "drop" in kwargs else [0]
+            self._data = self._pre_process(data, trait, drop)
         self._traits = list({x for x in self._data[0]})
+        self._traits.sort()
         self._stats = Statistics(self._data.drop(0, axis=1))
-        self._fig = plt.figure(figsize=(16, 9))
+        self._fig = plt.figure("Visualizer", figsize=(16, 9))
         self._fig.set_facecolor("0.85")
         (self._xaxis, self._yaxis) = (0, 0)
         self._button: list[Button] = list(self._generate_buttons())
@@ -31,15 +38,14 @@ class Visualizer:
         self._update_buttons()
         self._update_plot()
 
-    def _rename(self: Self, data: DataFrame, traits: int,
-                drop: list) -> DataFrame:
+    def _pre_process(self: Self, data: DataFrame, trait: int,
+                     drop: list) -> DataFrame:
         """Renames dataframe's headers."""
-        head = {k: v for (k, v) in zip(data.columns, range(len(data.columns)))}
-        data.rename(head, axis=1, inplace=True)
-        traits = data[traits]
+        traits = data[trait]
         data.drop(drop, axis=1, inplace=True)
         data = pd.concat([traits, data.select_dtypes("number")], axis=1)
         head = {k: v for (k, v) in zip(data.columns, range(len(data.columns)))}
+        self._remap = {v: k for (v, k) in zip(head.values(), head.keys())}
         return data.rename(head, axis=1)
 
     def _describe(self: Self) -> str:
@@ -61,10 +67,19 @@ class Visualizer:
         n = self._data.shape[1] - 1
         for i in range(n):
             axis = self._fig.add_axes(
-                [(1 - 2e-2) * i / n + 1e-2, 0.04, (1 - 2e-2) / n, 0.03])
-            button = Button(axis, i)
+                [(1 - 2e-2) * i / n + 1e-2, 0.05, (1 - 2e-2) / n, 0.03])
+            button = Button(axis, self._remap[i + 1])
             button.on_clicked(self._click_event(i))
             yield button
+        axis = self._fig.add_axes([0.45, 0.01, 0.1, 0.03])
+        button = Button(axis, "Pair Plot")
+        button.on_clicked(lambda event: self._pair_plot(event))
+        yield button
+
+    def _pair_plot(self: Self, event: MouseEvent) -> None:
+        """Generates and displays a pair plot of the data."""
+        if event.button == MouseButton.LEFT:
+            PairPlot(self._data, remap=self._remap).show()
 
     def _click_event(self: Self, column: int) -> Callable:
         """Generates on_click callbacks to update plotted datas."""
@@ -121,14 +136,16 @@ class Visualizer:
                 select = list(self._select(self._xaxis + 1, trait))
                 self._plot.hist(select, bins=100, alpha=0.7)
             self._plot.legend(self._traits)
-            self._plot.set_title(f"Distribution for character nº{self._xaxis}")
+            self._plot.set_title(
+                f"Distribution for character nº{self._remap[self._xaxis + 1]}")
         else:
             for trait in self._traits:
                 selectx = list(self._select(self._xaxis + 1, trait))
                 selecty = list(self._select(self._yaxis + 1, trait))
                 self._plot.scatter(selectx, selecty)
             self._plot.legend(self._traits)
-            self._plot.set_title(f"{self._yaxis} against {self._xaxis}")
+            self._plot.set_title((f"{self._remap[self._yaxis + 1]} against"
+                                  + f" {self._remap[self._xaxis + 1]}"))
         self._fig.canvas.draw()
 
     def _select(self: Self, column: int, trait: str) -> Generator:
@@ -145,21 +162,20 @@ class Visualizer:
 def main() -> None:
     """Visualizes csv dataset."""
     try:
-        warnings.filterwarnings(action="ignore")
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("drop", help="columns to drop, as an int index",
-                            nargs="*", type=int, default=0)
+                            nargs="*", default=0)
         parser.add_argument("-t", "--trait", help="column of observed traits",
-                            type=int, default=1)
+                            default=1)
         parser.add_argument("-n", "--no-header", help="first line is data",
                             action="store_true")
         if parser.parse_args().no_header:
-            data = read_csv(parser.parse_args().data, header=None)
+            data = pd.read_csv(parser.parse_args().data, header=None)
         else:
-            data = read_csv(parser.parse_args().data)
-        visualizer = Visualizer(data, parser.parse_args().trait,
-                                parser.parse_args().drop)
+            data = pd.read_csv(parser.parse_args().data)
+        visualizer = Visualizer(data, trait=parser.parse_args().trait,
+                                drop=parser.parse_args().drop)
         visualizer.show()
     except Exception as err:
         print(f"Error: {err.__class__.__name__}: {err}", file=sys.stderr)
