@@ -23,8 +23,8 @@ class Visualizer:
             self._data = data
             self._remap = kwargs["remap"]
         else:
-            trait = kwargs["trait"] if "trait" in kwargs else 1
-            drop = kwargs["drop"] if "drop" in kwargs else [0]
+            trait = kwargs["trait"] if "trait" in kwargs else '1'
+            drop = kwargs["drop"] if "drop" in kwargs else ['0']
             self._data = self._pre_process(data, trait, drop)
         self._traits = list({x for x in self._data[0]})
         self._traits.sort()
@@ -42,6 +42,8 @@ class Visualizer:
                      drop: list) -> DataFrame:
         """Renames dataframe's headers."""
         traits = data[trait]
+        head = {k: str(v) for (k, v) in zip(data.columns, data.columns)}
+        data.rename(head, axis=1, inplace=True)
         data.drop(drop, axis=1, inplace=True)
         data = pd.concat([traits, data.select_dtypes("number")], axis=1)
         head = {k: v for (k, v) in zip(data.columns, range(len(data.columns)))}
@@ -165,7 +167,7 @@ def main() -> None:
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("drop", help="columns to drop, as an int index",
-                            nargs="*", default=0)
+                            nargs="*", default='0')
         parser.add_argument("-t", "--trait", help="column of observed traits",
                             default=1)
         parser.add_argument("-n", "--no-header", help="first line is data",
