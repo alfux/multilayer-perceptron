@@ -3,8 +3,8 @@ import sys
 from typing import Self, Generator, Callable
 
 import matplotlib.pyplot as plt
-from matplotlib.text import Text
 from matplotlib.axes import Axes
+from matplotlib.text import Text
 from matplotlib.backend_bases import MouseEvent, MouseButton
 from matplotlib.widgets import Button
 import pandas as pd
@@ -28,13 +28,13 @@ class Visualizer:
             self._data = self._pre_process(data, trait, drop)
         self._traits = list({x for x in self._data[0]})
         self._traits.sort()
-        self._stats = Statistics(self._data.drop(0, axis=1))
-        self._fig = plt.figure("Visualizer", figsize=(16, 9))
+        title = kwargs["title"] if "title" in kwargs else "Visualizer"
+        self._fig = plt.figure(title, figsize=(16, 9))
         self._fig.set_facecolor("0.85")
         (self._xaxis, self._yaxis) = (0, 0)
         self._button: list[Button] = list(self._generate_buttons())
         self._plot: Axes = self._fig.add_axes([0.04, 0.13, 0.9, 0.8])
-        self._text: Text = self._fig.text(0.92, 0.575, self._describe())
+        self._text: Text = self._fig.text(0.92, 0.1, self._describe())
         self._update_buttons()
         self._update_plot()
 
@@ -44,7 +44,7 @@ class Visualizer:
         traits = data[trait]
         head = {k: str(v) for (k, v) in zip(data.columns, data.columns)}
         data.rename(head, axis=1, inplace=True)
-        data.drop(drop, axis=1, inplace=True)
+        data.drop([trait, *drop], axis=1, inplace=True)
         data = pd.concat([traits, data.select_dtypes("number")], axis=1)
         head = {k: v for (k, v) in zip(data.columns, range(len(data.columns)))}
         self._remap = {v: k for (v, k) in zip(head.values(), head.keys())}
@@ -52,16 +52,20 @@ class Visualizer:
 
     def _describe(self: Self) -> str:
         """Data description text."""
-        stats = self._stats.stats[self._xaxis]
-        text = f"Count: {stats['N']:.3g}\n\n"
-        text += f"Mean: {stats['Mean']:.3g}\n\n"
-        text += f"Var: {stats['Var']:.3g}\n\n"
-        text += f"Std: {stats['Std']:.3g}\n\n"
-        text += f"Min: {stats['Min']:.3g}\n\n"
-        text += f"25%: {stats['25%']:.3g}\n\n"
-        text += f"50%: {stats['50%']:.3g}\n\n"
-        text += f"75%: {stats['75%']:.3g}\n\n"
-        text += f"Max: {stats['Max']:.3g}\n\n"
+        text = ''
+        for trait in self._traits:
+            selected = self._select(self._xaxis + 1, trait)
+            stats = Statistics(DataFrame(selected)).stats
+            text += f"{trait}\n\n"
+            text += f"Count: {stats.loc['N', 0]:.3g}\n\n"
+            text += f"Mean: {stats.loc['Mean', 0]:.3g}\n\n"
+            text += f"Var: {stats.loc['Var', 0]:.3g}\n\n"
+            text += f"Std: {stats.loc['Std', 0]:.3g}\n\n"
+            text += f"Min: {stats.loc['Min', 0]:.3g}\n\n"
+            text += f"25%: {stats.loc['25%', 0]:.3g}\n\n"
+            text += f"50%: {stats.loc['50%', 0]:.3g}\n\n"
+            text += f"75%: {stats.loc['75%', 0]:.3g}\n\n"
+            text += f"Max: {stats.loc['Max', 0]:.3g}\n\n\n"
         return text
 
     def _generate_buttons(self: Self) -> Generator:
@@ -139,7 +143,7 @@ class Visualizer:
                 self._plot.hist(select, bins=100, alpha=0.7)
             self._plot.legend(self._traits)
             self._plot.set_title(
-                f"Distribution for character nº{self._remap[self._xaxis + 1]}")
+                f"Distribution for character {self._remap[self._xaxis + 1]}")
         else:
             for trait in self._traits:
                 selectx = list(self._select(self._xaxis + 1, trait))
@@ -157,7 +161,7 @@ class Visualizer:
                 yield self._data.at[i, column]
 
     def show(self: Self) -> None:
-        """Shows the figure."""
+        """Shows the visualizer."""
         plt.show()
 
 
@@ -167,7 +171,7 @@ def main() -> None:
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("drop", help="columns to drop, as an int index",
-                            nargs="*", default='0')
+                            nargs="*", default=[])
         parser.add_argument("-t", "--trait", help="column of observed traits",
                             default=1)
         parser.add_argument("-n", "--no-header", help="first line is data",
@@ -177,7 +181,8 @@ def main() -> None:
         else:
             data = pd.read_csv(parser.parse_args().data)
         visualizer = Visualizer(data, trait=parser.parse_args().trait,
-                                drop=parser.parse_args().drop)
+                                drop=parser.parse_args().drop,
+                                title=parser.parse_args().data)
         visualizer.show()
     except Exception as err:
         print(f"Error: {err.__class__.__name__}: {err}", file=sys.stderr)

@@ -15,6 +15,7 @@ class Statistics:
         self._fields = ["N", "Mean", "Var", "Std", "Min",
                         "25%", "50%", "75%", "Max"]
         self.stats = DataFrame(self._generate_stats(data.copy())).transpose()
+        self.stats.columns = data.columns
 
     def _generate_stats(self: Self, data: DataFrame) -> Generator:
         """Iterable over stat Series computed from data."""

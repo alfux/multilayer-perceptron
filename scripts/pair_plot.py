@@ -89,7 +89,7 @@ class PairPlot:
                 yield self._data.at[i, column]
 
     def show(self: Self) -> None:
-        """Shows the figure."""
+        """Shows the pair plot."""
         plt.show()
 
 
