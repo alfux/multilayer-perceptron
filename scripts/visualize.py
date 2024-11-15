@@ -3,8 +3,10 @@ import sys
 from typing import Self, Generator, Callable
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mclr
 from matplotlib.axes import Axes
 from matplotlib.text import Text
+from matplotlib.patches import PathPatch
 from matplotlib.backend_bases import MouseEvent, MouseButton
 from matplotlib.widgets import Button
 import pandas as pd
@@ -17,18 +19,19 @@ from pair_plot import PairPlot
 class Visualizer:
     """Handle visualization of datas."""
 
-    def __init__(self: Self, data: DataFrame, **kwargs: dict) -> None:
+    def __init__(self: Self, data: DataFrame, **param: dict) -> None:
         """Initializes the figue."""
-        if "remap" in kwargs:
+        if "remap" in param:
             self._data = data
-            self._remap = kwargs["remap"]
+            self._remap = param["remap"]
         else:
-            trait = kwargs["trait"] if "trait" in kwargs else '1'
-            drop = kwargs["drop"] if "drop" in kwargs else ['0']
+            trait = param["trait"] if "trait" in param else '1'
+            drop = param["drop"] if "drop" in param else ['0']
             self._data = self._pre_process(data, trait, drop)
         self._traits = list({x for x in self._data[0]})
         self._traits.sort()
-        title = kwargs["title"] if "title" in kwargs else "Visualizer"
+        self._colors = list(mclr.TABLEAU_COLORS.values())[:len(self._traits)]
+        title = param["title"] if "title" in param else "Visualizer"
         self._fig = plt.figure(title, figsize=(16, 9))
         self._fig.set_facecolor("0.85")
         (self._xaxis, self._yaxis) = (0, 0)
@@ -73,19 +76,35 @@ class Visualizer:
         n = self._data.shape[1] - 1
         for i in range(n):
             axis = self._fig.add_axes(
-                [(1 - 2e-2) * i / n + 1e-2, 0.05, (1 - 2e-2) / n, 0.03])
+                [(1 - 2e-2) * i / n + 1e-2, 0.02, (1 - 2e-2) / n, 0.03])
             button = Button(axis, self._remap[i + 1])
             button.on_clicked(self._click_event(i))
             yield button
-        axis = self._fig.add_axes([0.45, 0.01, 0.1, 0.03])
+        axis = self._fig.add_axes([0.14, 0.07, 0.1, 0.03])
         button = Button(axis, "Pair Plot")
         button.on_clicked(lambda event: self._pair_plot(event))
+        yield button
+        self._box = False
+        axis = self._fig.add_axes([0.04, 0.07, 0.1, 0.03])
+        button = Button(axis, "Box Plot")
+        button.on_clicked(lambda event: self._box_plot(event))
         yield button
 
     def _pair_plot(self: Self, event: MouseEvent) -> None:
         """Generates and displays a pair plot of the data."""
         if event.button == MouseButton.LEFT:
             PairPlot(self._data, remap=self._remap).show()
+
+    def _box_plot(self: Self, event: MouseEvent) -> None:
+        """Switch histogram and box plot."""
+        if event.button == MouseButton.LEFT:
+            self._box = not self._box
+            if self._box:
+                self._button[-1].label.set_text("Histogram")
+            else:
+                self._button[-1].label.set_text("Box Plot")
+            self._update_buttons()
+            self._update_plot()
 
     def _click_event(self: Self, column: int) -> Callable:
         """Generates on_click callbacks to update plotted datas."""
@@ -124,26 +143,25 @@ class Visualizer:
 
     def _display_stats(self: Self) -> None:
         """Displays statistics."""
-        bbox = self._plot.get_position()
-        self._plot.set_position([bbox.x0, bbox.y0, 0.875, 0.8])
+        boxplot = self._plot.get_position()
+        self._plot.set_position([boxplot.x0, boxplot.y0, 0.875, 0.8])
         self._text.set_text(self._describe())
 
     def _hide_stats(self: Self) -> None:
         """Hides statistics."""
-        bbox = self._plot.get_position()
-        self._plot.set_position([bbox.x0, bbox.y0, 0.92, 0.8])
+        boxplot = self._plot.get_position()
+        self._plot.set_position([boxplot.x0, boxplot.y0, 0.92, 0.8])
         self._text.set_text("")
 
     def _update_plot(self: Self) -> None:
         """Updates the plot on screen"""
         self._plot.clear()
         if self._xaxis == self._yaxis:
-            for trait in self._traits:
-                select = list(self._select(self._xaxis + 1, trait))
-                self._plot.hist(select, bins=100, alpha=0.7)
-            self._plot.legend(self._traits)
-            self._plot.set_title(
-                f"Distribution for character {self._remap[self._xaxis + 1]}")
+            if self._box:
+                self._generate_boxplot()
+                pass
+            else:
+                self._generate_histogram()
         else:
             for trait in self._traits:
                 selectx = list(self._select(self._xaxis + 1, trait))
@@ -153,6 +171,32 @@ class Visualizer:
             self._plot.set_title((f"{self._remap[self._yaxis + 1]} against"
                                   + f" {self._remap[self._xaxis + 1]}"))
         self._fig.canvas.draw()
+
+    def _generate_histogram(self: Self) -> None:
+        """Generates a histogram for the current selection."""
+        for t in self._traits:
+            select = [x for x in self._select(self._xaxis + 1, t)]
+            self._plot.hist(select, bins=100, alpha=0.7)
+        self._plot.legend(self._traits)
+        self._plot.set_title(f"Distribution of {self._remap[self._xaxis + 1]}")
+
+    def _generate_boxplot(self: Self) -> None:
+        """Generates a box plot for the current selection."""
+
+        def generate_selection() -> Generator:
+            """Iterator of group of traits."""
+            for t in self._traits:
+                yield [x for x in self._select(self._xaxis + 1, t) if x == x]
+
+        param = {"vert": False, "widths": 0.5, "meanline": True,
+                 "showmeans": True, "patch_artist": True,
+                 "tick_labels": self._traits[::-1]}
+        boxplot = self._plot.boxplot(list(generate_selection())[::-1], **param)
+        box: PathPatch
+        for (box, color) in zip(boxplot["boxes"], self._colors[::-1]):
+            box.set_facecolor(color)
+            box.set_alpha(0.4)
+        self._plot.set_title(f"Distribution of {self._remap[self._xaxis + 1]}")
 
     def _select(self: Self, column: int, trait: str) -> Generator:
         """Iterable selecting only values in column corresponding to trait."""
