@@ -12,8 +12,8 @@ from matplotlib.widgets import Button
 import pandas as pd
 from pandas import DataFrame
 
-from describe import Statistics
-from pair_plot import PairPlot
+from Statistics import Statistics
+from PairPlot import PairPlot
 
 
 class Visualizer:
