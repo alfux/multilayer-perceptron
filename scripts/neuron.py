@@ -1,8 +1,6 @@
-import argparse as arg
 import sys
 from typing import Self, Callable
 
-import pandas as pd
 import numpy as np
 from numpy import ndarray
 
@@ -10,52 +8,57 @@ from numpy import ndarray
 class Neuron:
     """Neuron node for a neural network."""
 
-    def __init__(self: Self, weights: ndarray, activation: Callable) -> None:
-        """Define neuron with its weights and activation function."""
-        self._weights = weights
-        self._activation = activation
+    def __init__(self: Self, f: Callable = None, df: Callable = None) -> None:
+        """Define neuron with its activation function and derivative.
 
-    @property
-    def weights(self: Self) -> ndarray:
-        """Returns weights of the neuron, including bias at index 0."""
-        return self._weights
+        Args:
+            <f> and <df> must be a C1 single parameter real function and it's
+            derivative, respectively.
+        """
+        if f is None:
+            self._f = lambda x: x
+            self._df = lambda x: 1
+        elif df is None:
+            self._f = f
+            self._df = Neuron._finite_diff
+        else:
+            self._f = f
+            self._df = df
 
-    @weights.setter
-    def weights(self: Self, new_weights: ndarray) -> None:
-        """Updates neuron's weights."""
-        if not isinstance(new_weights, ndarray):
-            raise TypeError("weights must be ndarray")
-        if new_weights.ndim != 1:
-            raise ValueError("weights must be 1D-array")
-        self._weights = new_weights
-    
-    def __call__(self: Self, data: ndarray) -> float:
-        """Computes neuron output."""
-        if not isinstance(data, ndarray):
-            raise TypeError("data must be ndarray")
-        if data.shape[0] == 0:
-            raise ValueError("data is empty")
-        if data.ndim == 1:
-            data = data.reshape((1, -1))
-        if data.shape[1] != len(self._weights) - 1:
-            raise ValueError("data's columns should match number of weights")
-        if data.ndim != 2:
-            raise ValueError("data's dimension should be 1 or 2")
-        bias_data = np.hstack((np.ones((data.shape[0], 1)), data))
-        return self._activation(np.dot(bias_data, self._weights))
+    def __call__(self: Self, x: float | ndarray) -> float | ndarray:
+        """Computes neuron's output."""
+        return self._f(x)
+
+    def deriv(self: Self, x: float | ndarray) -> float | ndarray:
+        """Computes neuron's derivative output."""
+        return self._df(x)
+
+    def _finite_diff(self: Self, x: float | ndarray) -> float | ndarray:
+        """Finite differences replaces the derivative if none is provided."""
+        return (self._f(x + 1e-6) - self._f(x - 1e-6)) / (2 * 1e-6)
 
 
 def main() -> None:
     """Displays neuron output from dataset input."""
     try:
-        parser = arg.ArgumentParser(description=main.__doc__)
-        parser.add_argument("data", help="csv dataset to compute")
-        parser.add_argument("weights", help="csv weights to use")
-        data = pd.read_csv(parser.parse_args().data)
-        weights = pd.read_csv(parser.parse_args().weights)
-        print(data, weights, sep="\n\n")
+        print("Neuron presentation:")
+        end = False
+        while not end:
+            try:
+                funct = eval(input("\tfunct: "))
+                deriv = eval(input("\tderiv: "))
+                neuron = Neuron(funct, deriv)
+                value = np.random.rand(1)
+                print(f"\t\tfunc({value}) = {neuron(value)}")
+                print(f"\t\tfunc.deriv({value}) = {neuron.deriv(value)}")
+            except Exception as err:
+                print(f"Error: {type(err).__name__}: {err}", file=sys.stderr)
+            finally:
+                end = input("Continue ? (y/n): ").casefold() in ('n', "no")
+        return 0
     except Exception as err:
-        print(f"Error: {err.__class__.__name__}: {err}", file=sys.stderr)
+        print(f"Error: {type(err).__name__}: {err}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
