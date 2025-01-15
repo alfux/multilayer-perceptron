@@ -9,7 +9,7 @@ from numpy import ndarray
 class Neuron:
     """Neuron node for a neural network.
 
-    It is an object with a single parameter real function and it's derivative.
+    It is an object with real function and it's derivative.
 
     This class is expected to be used with full knowledge of how it works.
     There isn't any verification or security of any kind outside of __init__

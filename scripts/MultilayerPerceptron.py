@@ -1,6 +1,6 @@
+import argparse as arg
 import sys
-from typing import Self, Generator
-import traceback
+from typing import Self, Generator, Callable
 
 import numpy as np
 from numpy import ndarray
@@ -17,16 +17,20 @@ class MultilayerPerceptron:
     in order to reduce time and operations complexities.
     """
 
-    def __init__(self: Self, layers: list[Layer], **kwargs: dict) -> None:
+    def __init__(self: Self, layers: list, cost: Neuron, lr=1e-3) -> None:
         """Creates a single or multilayer perceptron.
 
         Args:
             <layers> is a list of Layer objects. They represent hidden layers
             and the output layer of the network.
+            <cost> is the cost function used to train the model and measure
+            its performance.
+            <lr> is the learning rate. The lower the learning rate, the slower
+            the convergence. But a higher learning rate may lead to divergence.
         """
         self._layers: list[Layer] = layers
-        self._cost: Neuron = kwargs["cost"] if "cost" in kwargs else None
-        self._lr: float = kwargs["lrate"] if "lrate" in kwargs else 1e-3
+        self._cost: Neuron = cost
+        self._lr: float = lr
 
     def __call__(self: Self, vec: ndarray) -> float:
         """Computes the network's output
@@ -41,13 +45,17 @@ class MultilayerPerceptron:
 
     def update(self: Self, data: ndarray) -> None:
         """Updates the model by one pass of stochastic gradient descent.
-        
+
         The update is based on the model's current cost function.
         Args:
             <data> is the matrix containing, by row, inputs to train over.
         """
         for row in data:
             self._backpropagate(np.fromiter(self._forward_pass(row), ndarray))
+
+    @property
+    def cost(self: Self) -> Callable:
+        """Getter for the cost function."""
 
     def _backpropagate(self: Self, input: ndarray) -> None:
         """Updates matrices with backpropagation.
@@ -56,38 +64,45 @@ class MultilayerPerceptron:
             <input> is the chain of input / output in the network.
             First element is the initial input.
             Last element is the last layer's output.
+            It is computed during a forward pass
         """
-        delta = (
-            self._layers[-1].diff(self._layers[-1].weights @ input[-2]) @
-            self._cost.diff(input[-1]).T
-        )
-        self._layers[-1].weights = (
-            self._layers[-1].weights -
-            self._lr * np.outer(delta, input[-2])
-        )
+        dk = self._layers[-1].wdiff(input[-2]) @ self._cost.diff(input[-1])
+        self._layers[-1].W -= self._lr * np.outer(dk, input[-2])
         for i in range(len(self._layers) - 2, -1, -1):
-            delta =  (
-                self._layers[i].diff(self._layers[i].weights @ input[i]) @
-                self._layers[i + 1].weights.T @ delta
-            )
-            self._layers[i].weights = (
-                self._layers[i].weights -
-                self._lr * np.outer(delta, input[i])
-            )
+            dk = self._layers[i].wdiff(input[i]) @ self._layers[i + 1].W.T @ dk
+            self._layers[i].W -= self._lr * np.outer(dk, input[i])
 
-    def _forward_pass(self: Self, row: ndarray) -> Generator:
+    def _forward_pass(self: Self, vec: ndarray) -> Generator:
         """Generates an array with inputs of each layer (cost included)."""
         for layer in self._layers:
-            yield row
-            row = layer(row)
-        yield row
+            yield vec
+            vec = layer(vec)
+        yield vec
+
 
 def main() -> int:
+    """MLP sample output test."""
     try:
+        av = arg.ArgumentParser(description=main.__doc__)
+        av.add_argument("m", help="number of first layer's input", type=int)
+        av.add_argument("n", help="number of second layer's input", type=int)
+        av.add_argument("o", help="number of second layer's output", type=int)
+        av.add_argument("f", help="function used in each layer", type=str)
+        av.add_argument("df", help="derivative of the function", type=str)
+        av = av.parse_args()
+        print("MultiLayerPerceptron example")
+        (f, df) = (eval(av.f), eval(av.df))
+        l1 = Layer(Neuron(f, df), np.round(np.random.rand(av.n, av.m)))
+        l2 = Layer(Neuron(f, df), np.round(np.random.rand(av.o, av.n)))
+        cost = Neuron(lambda x: x, lambda x: np.identity(av.o))
+        mlp = MultilayerPerceptron([l1, l2], cost)
+        x = eval(input("Input vector: "))
+        print(f"\nl1.W = \n\n{l1.W}\n\nl1({x}) = \n\n\t{l1(x)}")
+        print(f"\nl2.W = \n\n{l2.W}\n\nl2({l1(x)}) = \n\n\t{l2(l1(x))}")
+        print(f"\nmlp({x}) = {mlp(x)}\n\ncost(mlp({x})) = {cost(mlp(x))}")
         return 0
     except Exception as err:
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
-        print(traceback.format_exc())
         return 1
 
 

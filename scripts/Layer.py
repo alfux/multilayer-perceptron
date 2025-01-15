@@ -1,6 +1,5 @@
 import sys
 from typing import Self
-import traceback
 
 import numpy as np
 from numpy import ndarray
@@ -16,49 +15,56 @@ class Layer:
     in order to reduce time and operations complexities.
     """
 
-    def __init__(self: Self, neurons: list[Neuron], weights: ndarray) -> None:
+    def __init__(self: Self, neuron: Neuron, weights: ndarray) -> None:
         """Creates the layer based on neurons list and weights matrix.
 
         Args:
-            <neurons> is a list of Neuron objects.
+            <neurons> is a Neuron objects used as basis in the layer.
             <weights> is a matrix with lines equal to the number of neurons and
-            columns equal to the number of input values plus one for the bias.
+            columns equal to the number of input values.
         """
-        self._neurons: list[Neuron] = neurons
+        self._neuron: Neuron = neuron
         self._matrix: ndarray = weights
 
-    def __call__(self: Self, vec: ndarray) -> ndarray:
-        """Computes layer's output.
+    def __len__(self: Self) -> int:
+        """Returns the length of the layer."""
+        return len(self._matrix)
+
+    def __call__(self: Self, input: ndarray) -> ndarray:
+        """Computes layer's weighted output.
 
         Args:
-            If weights are a (l, m) matrix, <vec> is expected to have length m.
+            If weights are a (l, m) matrix, <input> is expected to have
+            length m.
         """
-        vec = self._matrix @ vec
-        out = np.zeros(len(self._neurons), float)
-        for i in range(len(self._neurons)):
-            out[i] = self._neurons[i](vec[i])
+        input = self._matrix @ input
+        out = np.empty(len(self._matrix), float)
+        for i in range(len(self._matrix)):
+            out[i] = self._neuron(input[i])
         return out
 
-    def diff(self: Self, vec: ndarray) -> ndarray:
-        """Derivative function of the layer. Computes differential in <vec>.
+    def wdiff(self: Self, input: ndarray) -> ndarray:
+        """Weighted derivative function of the layer. Computes differential in
+        <self._weigths> @ <input>.
 
         By construction of the layer, the differential is a diagonal matrix.
         Args:
-            If weights are a (l, m) matrix, <vec> is expected to have length m.
+            If weights are a (l, m) matrix, <input> is expected to have
+            length m.
         """
-        vec = self._matrix @ vec
-        out = np.empty((len(self._neurons), len(self._neurons)), float)
-        for i in range(len(self._neurons)):
-            out[i, i] = self._neurons[i].diff(vec[i])
+        input = self._matrix @ input
+        out = np.zeros((len(self._matrix), len(self._matrix)), float)
+        for i in range(len(self._matrix)):
+            out[i, i] = self._neuron.diff(input[i])
         return out
 
     @property
-    def weights(self: Self) -> ndarray:
+    def W(self: Self) -> ndarray:
         """Get the matrix of weights."""
         return self._matrix
 
-    @weights.setter
-    def weights(self: Self, value: ndarray) -> None:
+    @W.setter
+    def W(self: Self, value: ndarray) -> None:
         """Set the matrix of weights."""
         self._matrix = value
 
@@ -66,28 +72,19 @@ class Layer:
 def main() -> int:
     """Displays the output of a layer."""
     try:
-        print("Layer presentation:")
-        (neurons, vector, end) = ([], [], False)
-        while not end:
-            try:
-                funct = eval(input("\tfunct: "))
-                deriv = eval(input("\tderiv: "))
-                vector.append(int(input("\tvalue: ")))
-                neurons.append(Neuron(funct, deriv))
-            except Exception as err:
-                print(f"Error: {type(err).__name__}: {err}", file=sys.stderr)
-            finally:
-                end = input("Continue ? (y/n): ").casefold() in ('n', "no")
-        matrix = np.random.rand(len(neurons), len(vector))
-        print(f"Matrix is\n{matrix}")
-        layer = Layer(neurons, matrix)
-        vector = np.atleast_2d(np.array(vector)).T
-        print(f"\nlayer({vector.T}) = \n{layer(vector)}")
-        print(f"\nlayer.deriv({vector.T}) = \n{layer.diff(vector)}")
+        print("Layer presentation:\n")
+        funct = eval(input("\tNeuron's function: "))
+        deriv = eval(input("\tNeuron's derivative: "))
+        numbr = int(input("\tNumber of neurons: "))
+        vectr = np.array(eval(input("\tInputs: ")))
+        matrix = np.random.rand(numbr, len(vectr))
+        print(f"Matrix is\n\n{matrix}")
+        layer = Layer(Neuron(funct, deriv), matrix)
+        print(f"\nlayer({vectr.T}) = \n\n{layer(vectr)}\n")
+        print(f"\nlayer.deriv({vectr.T}) = \n\n{layer.wdiff(vectr)}\n")
         return 0
     except Exception as err:
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
-        print(traceback.format_exc())
 
 
 if __name__ == "__main__":
