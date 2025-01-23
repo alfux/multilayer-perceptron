@@ -5,8 +5,11 @@ import argparse as arg
 import pandas as pd
 from pandas import DataFrame
 import numpy as np
+import numpy.random as rng
 from numpy import ndarray
 
+from Neuron import Neuron
+from Layer import Layer
 from MLP import MLP
 
 
@@ -27,17 +30,20 @@ class Teacher:
         self._answer: ndarray = book[answer].to_numpy()
         self._lesson: ndarray = book.drop([answer], axis=1).to_numpy()
         self._mlp = kwargs["mlp"] if "mlp" in kwargs else self._gen_basic_mlp()
+        print(self._mlp)
 
     def _gen_basic_mlp(self: Self) -> MLP:
         """Generates a basic MLP based on the given DataFrame."""
         n_in = self._lesson.shape[1]
         n_out = len(set(self._answer))
-        mlp_string = f"Teacher.ReLU,Teacher.dReLU:{n_in}x{n_in}:M;"
+        neuron = Neuron(Teacher.ReLU, Teacher.dReLU)
+        layers = [Layer([neuron] * n_in, rng.rand(n_in, n_in))]
         for i in range(n_in, n_out, -1):
-            mlp_string += f"Teacher.ReLU,Teacher.dReLU:{i - 1}x{i}:M;"
-        mlp_string += f"Teacher.softmax,Teacher.dsoftmax:{n_out}x{n_out}:S;"
-        mlp_string += "Teacher.cross_entropy,Teacher.dcross_entropy;1e-3"
-        print(mlp_string)
+            layers += [Layer([neuron] * (i - 1), rng.rand(i - 1, i))]
+        neuron = Neuron(Teacher.softmax, Teacher.dsoftmax)
+        layers += [Layer([neuron], rng.rand(n_out, n_out))]
+        neuron = Neuron(Teacher.cross_entropy, Teacher.dcross_entropy)
+        return MLP(layers, neuron)
 
     @staticmethod
     def softmax(x: ndarray) -> ndarray:

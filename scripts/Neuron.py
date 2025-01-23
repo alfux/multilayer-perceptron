@@ -30,22 +30,13 @@ class Neuron:
         """Computes neuron's output."""
         return self._f(x)
 
+    def __repr__(self: Self) -> str:
+        """String representation of the object."""
+        return f"{self._f.__name__},{self._df.__name__}"
+
     def diff(self: Self, x: float | ndarray) -> float | ndarray:
         """Derivative of the neuron. Computes differential in point x."""
         return self._df(x)
-
-    @staticmethod
-    def gen(neuron: str) -> Self:
-        """Generates a Neuron based on an encoded string.
-
-        Args:
-            <neuron> is a string of two comma separated tokens. Each token will
-            be evaluated as a function. They must exist in runtime. They can be
-            lambda functions. They represent the activation and its derivative.
-        Example:
-            f,df
-        """
-        return Neuron(*map(eval, neuron.split(',')))
 
 
 def main() -> None:

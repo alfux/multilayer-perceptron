@@ -43,6 +43,18 @@ class MLP:
             vec = layer(vec)
         return vec
 
+    def __len__(self: Self) -> int:
+        """Returns the number of layers in the MLP."""
+        return len(self._layers)
+
+    def __repr__(self: Self) -> str:
+        """String representation of the object."""
+        string = ""
+        for layer in self._layers:
+            string += f"\n{layer}"
+        string += f"\n{self._cost}"
+        return string
+
     def update(self: Self, data: ndarray) -> None:
         """Updates the model by one pass of stochastic gradient descent.
 
@@ -79,20 +91,6 @@ class MLP:
             yield vec
             vec = layer(vec)
         yield vec
-
-    @staticmethod
-    def gen(mlp: str) -> Self:
-        """Generates an MLP based of an encoded string.
-
-        Args:
-            <mlp> is a string of semi colon separated token. Each token is a
-            layer token (See Layer). The second to last token is the cost and
-            the last one is the learning rate.
-        Example:
-            "f,df:3x4;g,dg:2x3;...;cost,dcost;e"
-        """
-        t = mlp.split(';')
-        return MLP(map(Layer.gen, t[:-2]), Neuron.gen(t[-2]), float(t[-1]))
 
 
 def main() -> int:
