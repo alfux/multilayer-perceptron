@@ -37,7 +37,7 @@ class Neuron:
     @staticmethod
     def gen(neuron: str) -> Self:
         """Generates a Neuron based on an encoded string.
-        
+
         Args:
             <neuron> is a string of two comma separated tokens. Each token will
             be evaluated as a function. They must exist in runtime. They can be
@@ -46,6 +46,7 @@ class Neuron:
             f,df
         """
         return Neuron(*map(eval, neuron.split(',')))
+
 
 def main() -> None:
     """Displays neuron output from dataset input."""

@@ -20,7 +20,8 @@ class Teacher:
             <book> is a DataFrame containing the lesson and the answers.
             <answer> is the column of the DataFrame containing the truth to
             train the MLP against.
-            <layers> is a 
+            <mlp> is a MLP instance. Provide it as key word argument in order
+            to train it instead of the basic generated MLP.
         """
         answer = kwargs["answer"] if "answer" in kwargs else book.columns[0]
         self._answer: ndarray = book[answer].to_numpy()
@@ -61,7 +62,7 @@ class Teacher:
     def ReLU(x: float) -> float:
         """Computes the value of Rectified Linear Unit function in <x>."""
         return np.max([0, x])
-    
+
     @staticmethod
     def dReLU(x: float) -> float:
         """Computes the differential of ReLU in <x>."""

@@ -102,7 +102,7 @@ class Layer:
     @staticmethod
     def gen(layer: str) -> Self:
         """Generates a Layer based on an encoded string.
-        
+
         Args:
             <layer> is a string of two or three colon separated tokens.
             First is a neuron token (See Neuron).
