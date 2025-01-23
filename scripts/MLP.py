@@ -9,7 +9,7 @@ from Neuron import Neuron
 from Layer import Layer
 
 
-class MultilayerPerceptron:
+class MLP:
     """Configurable Multilayer (or Singlelayer) Perceptron
 
     This class is expected to be used with full knowledge of how it works.
@@ -56,6 +56,7 @@ class MultilayerPerceptron:
     @property
     def cost(self: Self) -> Callable:
         """Getter for the cost function."""
+        return self._cost
 
     def _backpropagate(self: Self, input: ndarray) -> None:
         """Updates matrices with backpropagation.
@@ -79,6 +80,20 @@ class MultilayerPerceptron:
             vec = layer(vec)
         yield vec
 
+    @staticmethod
+    def gen(mlp: str) -> Self:
+        """Generates an MLP based of an encoded string.
+
+        Args:
+            <mlp> is a string of semi colon separated token. Each token is a
+            layer token (See Layer). The second to last token is the cost and
+            the last one is the learning rate.
+        Example:
+            "f,df:3x4;g,dg:2x3;...;cost,dcost;e"
+        """
+        t = mlp.split(';')
+        return MLP(map(Layer.gen, t[:-2]), Neuron.gen(t[-2]), float(t[-1]))
+
 
 def main() -> int:
     """MLP sample output test."""
@@ -94,12 +109,12 @@ def main() -> int:
         (f, df) = (eval(av.f), eval(av.df))
         l1 = Layer(Neuron(f, df), np.round(np.random.rand(av.n, av.m)))
         l2 = Layer(Neuron(f, df), np.round(np.random.rand(av.o, av.n)))
-        cost = Neuron(lambda x: x, lambda x: np.identity(av.o))
-        mlp = MultilayerPerceptron([l1, l2], cost)
+        cost = Neuron(lambda x: 2 * x, lambda x: 2 * np.identity(av.o))
+        mlp = MLP([l1, l2], cost)
         x = eval(input("Input vector: "))
         print(f"\nl1.W = \n\n{l1.W}\n\nl1({x}) = \n\n\t{l1(x)}")
         print(f"\nl2.W = \n\n{l2.W}\n\nl2({l1(x)}) = \n\n\t{l2(l1(x))}")
-        print(f"\nmlp({x}) = {mlp(x)}\n\ncost(mlp({x})) = {cost(mlp(x))}")
+        print(f"\nmlp({x}) = {mlp(x)}\n\ncost(mlp({x})) = {mlp.cost(mlp(x))}")
         return 0
     except Exception as err:
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
