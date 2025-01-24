@@ -1,6 +1,5 @@
 import sys
 from typing import Self
-from types import MethodType
 
 import numpy as np
 from numpy import ndarray
@@ -30,14 +29,14 @@ class Layer:
                 raise ValueError("neurons can't be empty")
             case 1:
                 self._neurons: Neuron = neurons[0]
-                self.__class__.__call__ = MethodType(Layer._vect_call, self)
-                self.wdiff = MethodType(Layer._vect_wdiff, self)
+                self.__class__.__call__ = Layer._vect_call
+                self.wdiff = Layer._vect_wdiff
             case _:
                 if len(neurons) != len(weights):
                     raise ValueError("matrix' shape doesn't fit neuron list")
                 self._neurons: list[Neuron] = neurons
-                self.__class__.__call__ = MethodType(Layer._call, self)
-                self.wdiff = MethodType(Layer._wdiff, self)
+                self.__class__.__call__ = Layer._call
+                self.wdiff = Layer._wdiff
 
     def __len__(self: Self) -> int:
         """Returns the length of the layer."""
@@ -123,12 +122,13 @@ def main() -> int:
         vectr = np.array(eval(input("\tInputs: ")))
         matrix = np.random.rand(numbr, len(vectr))
         print(f"Matrix is\n\n{matrix}")
-        layer = Layer(Neuron(funct, deriv), matrix, True)
+        layer = Layer([Neuron(funct, deriv)] * numbr, matrix)
         print(f"\nlayer({vectr.T}) = \n\n{layer(vectr)}\n")
         print(f"\nlayer.deriv({vectr.T}) = \n\n{layer.wdiff(vectr)}\n")
         return 0
     except Exception as err:
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

@@ -4,9 +4,11 @@ from typing import Self, Generator, Callable
 
 import numpy as np
 from numpy import ndarray
+import numpy.random as rng
 
-from Neuron import Neuron
 from Layer import Layer
+from Neuron import Neuron
+from Preprocessor import Preprocessor
 
 
 class MLP:
@@ -17,7 +19,7 @@ class MLP:
     in order to reduce time and operations complexities.
     """
 
-    def __init__(self: Self, layers: list, cost: Neuron, lr=1e-3) -> None:
+    def __init__(self: Self, layers: list, cost: Neuron, **kw: dict) -> None:
         """Creates a single or multilayer perceptron.
 
         Args:
@@ -25,23 +27,17 @@ class MLP:
             and the output layer of the network.
             <cost> is the cost function used to train the model and measure
             its performance.
-            <lr> is the learning rate. The lower the learning rate, the slower
-            the convergence. But a higher learning rate may lead to divergence.
+        Keyword arguments <kw>:
+            <learning_rate> is the speed of learning, the lower the learning
+            rate, the slower the convergence. But a higher learning rate may
+            lead complete to divergence.
+            <preprocessor> is the preprocessing function used over the training
+            dataset. It is used by the model to have consistent input.
         """
         self._layers: list[Layer] = layers
         self._cost: Neuron = cost
-        self._lr: float = lr
-
-    def __call__(self: Self, vec: ndarray) -> float:
-        """Computes the network's output
-
-        Args:
-            <vec> is supposed to be a (m, n) matrix where m is the number of
-            entries of the input layer plus one.
-        """
-        for layer in self._layers:
-            vec = layer(vec)
-        return vec
+        self._lr: float = kw.get("learning_rate", 1e-3)
+        self.preprocessor = kw.get("preprocessor", None)
 
     def __len__(self: Self) -> int:
         """Returns the number of layers in the MLP."""
@@ -55,6 +51,23 @@ class MLP:
         string += f"\n{self._cost}"
         return string
 
+    @property
+    def preprocessor(self: Self) -> Preprocessor:
+        return self._preprocessor
+
+    @preprocessor.setter
+    def preprocessor(self: Self, value: Preprocessor) -> None:
+        self._preprocessor = value
+        if value is not None:
+            self.__class__.__call__ = MLP._preprocessed_call
+        else:
+            self.__class__.__call__ = MLP._vanilla_call
+
+    @property
+    def cost(self: Self) -> Callable:
+        """Getter for the cost function."""
+        return self._cost
+
     def update(self: Self, data: ndarray) -> None:
         """Updates the model by one pass of stochastic gradient descent.
 
@@ -64,11 +77,6 @@ class MLP:
         """
         for row in data:
             self._backpropagate(np.fromiter(self._forward_pass(row), ndarray))
-
-    @property
-    def cost(self: Self) -> Callable:
-        """Getter for the cost function."""
-        return self._cost
 
     def _backpropagate(self: Self, input: ndarray) -> None:
         """Updates matrices with backpropagation.
@@ -92,6 +100,37 @@ class MLP:
             vec = layer(vec)
         yield vec
 
+    def _preprocessed_call(self: Self, vec: ndarray) -> float:
+        """Computes the network's output
+
+        Args:
+            <vec> is supposed to be a (m, n) matrix where m is the number of
+            entries of the input layer plus one.
+        """
+        vec = self._preprocessor(vec)
+        for layer in self._layers:
+            vec = layer(vec)
+        return vec
+
+    def _vanilla_call(self: Self, vec: ndarray) -> float:
+        """Computes the network's output
+
+        Args:
+            <vec> is supposed to be a (m, n) matrix where m is the number of
+            entries of the input layer plus one.
+        """
+        for layer in self._layers:
+            vec = layer(vec)
+        return vec
+
+    @staticmethod
+    def load(string: str, direct: bool = False) -> Self:
+        """Loads MLP parameters from a file or a string."""
+        if direct:
+            return  # load_logic(string)
+        with open(string, 'rb') as file:
+            return  # load_logic(file.read())
+
 
 def main() -> int:
     """MLP sample output test."""
@@ -105,8 +144,8 @@ def main() -> int:
         av = av.parse_args()
         print("MultiLayerPerceptron example")
         (f, df) = (eval(av.f), eval(av.df))
-        l1 = Layer(Neuron(f, df), np.round(np.random.rand(av.n, av.m)))
-        l2 = Layer(Neuron(f, df), np.round(np.random.rand(av.o, av.n)))
+        l1 = Layer([Neuron(f, df)] * av.n, np.round(rng.rand(av.n, av.m)))
+        l2 = Layer([Neuron(f, df)] * av.o, np.round(rng.rand(av.o, av.n)))
         cost = Neuron(lambda x: 2 * x, lambda x: 2 * np.identity(av.o))
         mlp = MLP([l1, l2], cost)
         x = eval(input("Input vector: "))

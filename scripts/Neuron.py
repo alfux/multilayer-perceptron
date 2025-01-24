@@ -1,6 +1,5 @@
 import sys
 from typing import Self, Callable
-import traceback
 
 import numpy as np
 from numpy import ndarray
@@ -59,7 +58,6 @@ def main() -> None:
         return 0
     except Exception as err:
         print(f"\n\tError: {type(err).__name__}: {err}\n", file=sys.stderr)
-        print(traceback.format_exc())
         return 1
 
 

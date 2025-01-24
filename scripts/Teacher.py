@@ -1,16 +1,16 @@
+import argparse as arg
 import sys
 from typing import Self
-import argparse as arg
 
+import numpy as np
+from numpy import ndarray
+import numpy.random as rng
 import pandas as pd
 from pandas import DataFrame
-import numpy as np
-import numpy.random as rng
-from numpy import ndarray
 
-from Neuron import Neuron
 from Layer import Layer
 from MLP import MLP
+from Neuron import Neuron
 
 
 class Teacher:

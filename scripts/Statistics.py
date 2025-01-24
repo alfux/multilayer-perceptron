@@ -14,7 +14,7 @@ class Statistics:
         """Process dataset"""
         self._fields = ["N", "Mean", "Var", "Std", "Min",
                         "25%", "50%", "75%", "Max"]
-        self.stats = DataFrame(self._generate_stats(data.copy())).transpose()
+        self.stats = DataFrame(self._generate_stats(data)).transpose()
         self.stats.columns = data.columns
 
     def _generate_stats(self: Self, data: DataFrame) -> Generator:
@@ -25,11 +25,12 @@ class Statistics:
     def _compute(self: Self, column: Series) -> Series:
         """Computes stats on the column's data and return it as a Series"""
         stat = [0] * len(self._fields)
-        column = [x for x in column if x == x]
-        list.sort(column)
+        column = column.to_numpy(dtype=float)
+        column = np.sort(column[~np.isnan(column)])
         stat[0] = len(column)
         stat[1] = np.sum(column) / stat[0]
-        stat[2] = np.sum((column - stat[1]) ** 2) / (stat[0] - 1)
+        stat[2] = ((np.sum(column ** 2) / stat[0]) - (stat[1] ** 2))
+        stat[2] *= stat[0] / (stat[0] - 1)
         stat[3] = np.sqrt(stat[2])
         stat[4] = column[0]
         stat[5] = self._percentile(column, 25)
@@ -48,10 +49,10 @@ class Statistics:
         return sorted[p]
 
 
-def main() -> None:
+def main() -> int:
     """Prints a description of numerical values frome csv file."""
     try:
-        parser = arg.ArgumentParser(description="Prints csv dataset stats")
+        parser = arg.ArgumentParser(description=main.__doc__)
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("-n", "--no-header", action="store_true")
         if parser.parse_args().no_header:
@@ -59,8 +60,10 @@ def main() -> None:
         else:
             data = pd.read_csv(parser.parse_args().data)
         print(Statistics(data.select_dtypes([float, int])).stats)
+        return 0
     except Exception as err:
-        print(f"Error: {err.__class__.__name__}: {err}", file=sys.stderr)
+        print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
