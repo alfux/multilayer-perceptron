@@ -1,4 +1,6 @@
+import argparse as arg
 import sys
+import traceback
 from typing import Self
 
 import numpy as np
@@ -30,13 +32,13 @@ class Layer:
             case 1:
                 self._neurons: Neuron = neurons[0]
                 self.__class__.__call__ = Layer._vect_call
-                self.wdiff = Layer._vect_wdiff
+                self.wdiff = self._vect_wdiff
             case _:
                 if len(neurons) != len(weights):
                     raise ValueError("matrix' shape doesn't fit neuron list")
                 self._neurons: list[Neuron] = neurons
                 self.__class__.__call__ = Layer._call
-                self.wdiff = Layer._wdiff
+                self.wdiff = self._wdiff
 
     def __len__(self: Self) -> int:
         """Returns the length of the layer."""
@@ -115,6 +117,9 @@ class Layer:
 def main() -> int:
     """Displays the output of a layer."""
     try:
+        av = arg.ArgumentParser(description=main.__doc__)
+        av.add_argument("--debug", action="store_true", help="debug mode")
+        av = av.parse_args()
         print("Layer presentation:\n")
         funct = eval(input("\tNeuron's function: "))
         deriv = eval(input("\tNeuron's derivative: "))
@@ -127,6 +132,8 @@ def main() -> int:
         print(f"\nlayer.deriv({vectr.T}) = \n\n{layer.wdiff(vectr)}\n")
         return 0
     except Exception as err:
+        if av.debug:
+            print(traceback.format_exc())
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
         return 1
 

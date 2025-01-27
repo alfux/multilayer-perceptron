@@ -8,7 +8,6 @@ import numpy.random as rng
 
 from Layer import Layer
 from Neuron import Neuron
-from Preprocessor import Preprocessor
 
 
 class MLP:
@@ -37,7 +36,7 @@ class MLP:
         self._layers: list[Layer] = layers
         self._cost: Neuron = cost
         self._lr: float = kw.get("learning_rate", 1e-3)
-        self.preprocessor = kw.get("preprocessor", None)
+        self._preprocessor: Callable = kw.get("preprocessor", None)
 
     def __len__(self: Self) -> int:
         """Returns the number of layers in the MLP."""
@@ -52,11 +51,11 @@ class MLP:
         return string
 
     @property
-    def preprocessor(self: Self) -> Preprocessor:
+    def preprocessor(self: Self) -> Callable[[ndarray], ndarray]:
         return self._preprocessor
 
     @preprocessor.setter
-    def preprocessor(self: Self, value: Preprocessor) -> None:
+    def preprocessor(self: Self, value: Callable[[ndarray], ndarray]) -> None:
         self._preprocessor = value
         if value is not None:
             self.__class__.__call__ = MLP._preprocessed_call
