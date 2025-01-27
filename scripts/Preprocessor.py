@@ -36,7 +36,8 @@ class Preprocessor:
         if self._process == Preprocessor.identity:
             self._process = standardizer
         else:
-            self._process = lambda x: standardizer(self._process(x))
+            previous_process = self._process
+            self._process = lambda x: standardizer(previous_process(x))
         self._data = standardizer(self._data)
         self._stat = Statistics(self._data).stats
         return self
@@ -47,15 +48,16 @@ class Preprocessor:
         if self._process == Preprocessor.identity:
             self._process = normalizer
         else:
-            self._process = lambda x: normalizer(self._process(x))
+            previous_process = self._process
+            self._process = lambda x: normalizer(previous_process(x))
         self._data = normalizer(self._data)
-        self._stats = Statistics(self._data).stats
+        self._stat = Statistics(self._data).stats
         return self
 
     def _create_standardizer(self: Self) -> Callable[[ndarray], ndarray]:
         """Creates a standardizer for the current dataset."""
-        mean = self._stat["Mean"].to_numpy().copy()
-        std = self._stat["Std"].to_numpy().copy()
+        mean = self._stat.loc["Mean"].to_numpy().copy()
+        std = self._stat.loc["Std"].to_numpy().copy()
 
         def standardizer(x: ndarray | DataFrame) -> ndarray | DataFrame:
             return (x - mean) / std
@@ -64,8 +66,8 @@ class Preprocessor:
 
     def _create_normalizer(self: Self) -> Callable[[ndarray], ndarray]:
         """Creates a normalizer for the current dataset."""
-        min = self._stat["Min"].to_numpy().copy()
-        scale = self._stat["Max"].to_numpy() - min
+        min = self._stat.loc["Min"].to_numpy().copy()
+        scale = self._stat.loc["Max"].to_numpy() - min
 
         def normalizer(x: ndarray | DataFrame) -> ndarray | DataFrame:
             return (x - min) / scale
@@ -79,6 +81,17 @@ class Preprocessor:
 
 def main() -> int:
     try:
+        test = DataFrame([[1, 0, 0.8],
+                          [4, 375, 7],
+                          [9, -3, 12]])
+        processor = Preprocessor(test)
+        print("Data", test, sep="\n\n", end="\n\n")
+        processor.standardize()
+        print("Standaridzed", processor.data, sep="\n\n", end="\n\n")
+        processor.normalize()
+        print("Normalized", processor.data, sep="\n\n", end="\n\n")
+        print("Reset", test, sep="\n\n", end="\n\n")
+        print("Composition", processor.process(test), sep="\n\n", end="\n\n")
         return 0
     except Exception as err:
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
