@@ -35,8 +35,8 @@ class MLP:
         """
         self._layers: list[Layer] = layers
         self._cost: Neuron = cost
-        self._lr: float = kw.get("learning_rate", 1e-3)
-        self._preprocessor: Callable = kw.get("preprocessor", None)
+        self._lr: float = kw.get("learning_rate", 1)
+        self.preprocessor: Callable = kw.get("preprocessor", None)
 
     def __len__(self: Self) -> int:
         """Returns the number of layers in the MLP."""
@@ -52,32 +52,36 @@ class MLP:
 
     @property
     def preprocessor(self: Self) -> Callable[[ndarray], ndarray]:
-        return self._preprocessor
+        return self._preprocess
 
     @preprocessor.setter
     def preprocessor(self: Self, value: Callable[[ndarray], ndarray]) -> None:
-        self._preprocessor = value
+        self._preprocess = value
         if value is not None:
-            self.__class__.__call__ = MLP._preprocessed_call
+            self.eval = self._preprocessed_eval
         else:
-            self.__class__.__call__ = MLP._vanilla_call
+            self.eval = self._vanilla_eval
 
     @property
     def cost(self: Self) -> Callable:
         """Getter for the cost function."""
         return self._cost
 
-    def update(self: Self, data: ndarray) -> None:
+    def eval(self: Self, x: ndarray) -> ndarray:
+        """Placeholder for the eval method dynamically attributed."""
+        pass
+
+    def update(self: Self, truth: ndarray, data: ndarray) -> None:
         """Updates the model by one pass of stochastic gradient descent.
 
         The update is based on the model's current cost function.
         Args:
             <data> is the matrix containing, by row, inputs to train over.
         """
-        for row in data:
-            self._backpropagate(np.fromiter(self._forward_pass(row), ndarray))
+        for (y, x) in zip(truth, data):
+            self._backpropagate(y, np.fromiter(self._forward_pass(x), ndarray))
 
-    def _backpropagate(self: Self, input: ndarray) -> None:
+    def _backpropagate(self: Self, y: ndarray, input: ndarray) -> None:
         """Updates matrices with backpropagation.
 
         Args:
@@ -86,41 +90,44 @@ class MLP:
             Last element is the last layer's output.
             It is computed during a forward pass
         """
-        dk = self._layers[-1].wdiff(input[-2]) @ self._cost.diff(input[-1])
+        operand1 = self._layers[-1].wdiff(input[-2])
+        operand2 = self._cost.diff(y, input[-1])
+        dk = operand1 @ operand2
         self._layers[-1].W -= self._lr * np.outer(dk, input[-2])
         for i in range(len(self._layers) - 2, -1, -1):
             dk = self._layers[i].wdiff(input[i]) @ self._layers[i + 1].W.T @ dk
-            self._layers[i].W -= self._lr * np.outer(dk, input[i])
+            inter = self._lr * np.outer(dk, input[i])
+            self._layers[i].W -= inter
 
-    def _forward_pass(self: Self, vec: ndarray) -> Generator:
+    def _forward_pass(self: Self, x: ndarray) -> Generator:
         """Generates an array with inputs of each layer (cost included)."""
         for layer in self._layers:
-            yield vec
-            vec = layer(vec)
-        yield vec
+            yield x
+            x = layer.eval(x)
+        yield x
 
-    def _preprocessed_call(self: Self, vec: ndarray) -> float:
+    def _preprocessed_eval(self: Self, x: ndarray) -> ndarray:
         """Computes the network's output
 
         Args:
-            <vec> is supposed to be a (m, n) matrix where m is the number of
+            <x> is supposed to be a (m, n) matrix where m is the number of
             entries of the input layer plus one.
         """
-        vec = self._preprocessor(vec)
+        self._preprocess(x)
         for layer in self._layers:
-            vec = layer(vec)
-        return vec
+            x = layer.eval(x)
+        return x
 
-    def _vanilla_call(self: Self, vec: ndarray) -> float:
+    def _vanilla_eval(self: Self, x: ndarray) -> ndarray:
         """Computes the network's output
 
         Args:
-            <vec> is supposed to be a (m, n) matrix where m is the number of
+            <x> is supposed to be a (m, n) matrix where m is the number of
             entries of the input layer plus one.
         """
         for layer in self._layers:
-            vec = layer(vec)
-        return vec
+            x = layer.eval(x)
+        return x
 
     @staticmethod
     def load(string: str, direct: bool = False) -> Self:

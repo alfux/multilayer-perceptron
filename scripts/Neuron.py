@@ -25,17 +25,17 @@ class Neuron:
         self._f: Callable = f
         self._df: Callable = df
 
-    def __call__(self: Self, x: float | ndarray) -> float | ndarray:
+    def __call__(self: Self, *args: list) -> float | ndarray:
         """Computes neuron's output."""
-        return self._f(x)
+        return self._f(*args)
 
     def __repr__(self: Self) -> str:
         """String representation of the object."""
         return f"{self._f.__name__},{self._df.__name__}"
 
-    def diff(self: Self, x: float | ndarray) -> float | ndarray:
+    def diff(self: Self, *args: list) -> float | ndarray:
         """Derivative of the neuron. Computes differential in point x."""
-        return self._df(x)
+        return self._df(*args)
 
 
 def main() -> None:

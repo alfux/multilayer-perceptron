@@ -29,9 +29,8 @@ class Teacher:
         """
         self._preprocessor = Preprocessor(book, **kwargs)
         self._lesson: ndarray = self._preprocessor.normalize().data
-        self._answer: ndarray = self._preprocessor.to_onehot().onehot
+        self._truth: ndarray = self._preprocessor.to_onehot().onehot
         self._mlp: MLP = kwargs["mlp"] if "mlp" in kwargs else self._auto_mlp()
-        self._mlp.preprocessor = self._preprocessor.process
 
     @property
     def mlp(self: Self) -> MLP:
@@ -42,7 +41,6 @@ class Teacher:
     def mlp(self: Self, value: MLP) -> None:
         """Setter for the mlp model."""
         self._mlp = value
-        self._mlp.preprocessor = self._preprocessor._process
 
     def teach(self: Self, epoch: int = -1, e: float = 1e-3) -> Self:
         """Teaches the lesson to the internal MLP.
@@ -54,11 +52,14 @@ class Teacher:
             Cross Entropy Loss is small enough.
         """
         if epoch <= 0:
-            while Teacher.BCELF(self._answer, self._mlp(self._lesson)) < e:
+            while Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)) > e:
                 self._mlp.update(self._lesson)
         else:
             for _ in range(epoch):
-                self._mlp.update(self._lesson)
+                print(Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)))
+                self._mlp.update(self._truth, self._lesson)
+        print(Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)))
+        # Add preprocess after training
         return self
 
     def _auto_mlp(self: Self) -> MLP:
@@ -66,23 +67,22 @@ class Teacher:
         n_in = self._lesson.shape[1]
         n_out = len(self._preprocessor.unique)
         neuron = Neuron(Teacher.ReLU, Teacher.dReLU)
-        layers = [Layer([neuron] * n_in, rng.rand(n_in, n_in))]
+        layers = [Layer([neuron] * n_in, rng.rand(n_in, n_in) / n_in)]
         for i in range(n_in, n_out, -1):
-            layers += [Layer([neuron] * (i - 1), rng.rand(i - 1, i))]
+            layers += [Layer([neuron] * (i - 1), rng.rand(i - 1, i) / i)]
         neuron = Neuron(Teacher.softmax, Teacher.dsoftmax)
-        layers += [Layer([neuron], rng.rand(n_out, n_out))]
-        cel = Teacher.get_CELF(self._answer)
-        dcel = Teacher.get_dCELF(self._answer)
-        return MLP(layers, Neuron(cel, dcel))
+        layers += [Layer([neuron], rng.rand(n_out, n_out) / n_out)]
+        cel = Teacher.CELF
+        dcel = Teacher.dCELF
+        return MLP(layers, Neuron(cel, dcel), learning_rate=1e-3)
 
     @staticmethod
     def softmax(x: ndarray) -> ndarray:
         """Computes the value of softmax function in <x>."""
-        out = np.empty(len(x), float)
-        for i in range(len(x)):
-            out[i] = np.exp(x[i])
-        norm = np.sum(out)
-        return out / norm
+        out = np.exp(x)
+        if x.ndim > 1:
+            return out / np.atleast_2d(np.sum(out, axis=1)).T
+        return out / np.sum(out)
 
     @staticmethod
     def dsoftmax(x: ndarray) -> ndarray:
@@ -95,16 +95,14 @@ class Teacher:
         return Jacobian
 
     @staticmethod
-    def ReLU(x: float) -> float:
+    def ReLU(x: ndarray) -> ndarray:
         """Computes the value of Rectified Linear Unit function in <x>."""
-        return np.max([0, x])
+        return (x > 0).astype(float) * x
 
     @staticmethod
-    def dReLU(x: float) -> float:
+    def dReLU(x: ndarray) -> ndarray:
         """Computes the differential of ReLU in <x>."""
-        if x != 0:
-            return 1 if x > 0 else 0
-        return 0
+        return (x > 0).astype(float)
 
     @staticmethod
     def sigmoid(x: float) -> float:
@@ -117,40 +115,24 @@ class Teacher:
         return 1 / ((1 + np.exp(-x)) * (1 + np.exp(x)))
 
     @staticmethod
-    def get_BCELF(y: ndarray) -> Callable[[ndarray], ndarray]:
-        """Batched Cross Entropy Loss Function."""
-
-        def BCELF(x: ndarray) -> ndarray:
-            return -np.sum(np.log(np.einsum("ij,ij->i", y, x))) / x.shape[0]
-
-        return BCELF
+    def TCELF(y: ndarray, x: ndarray) -> ndarray:
+        """Total Cross Entropy Loss Function."""
+        return -np.sum(np.log(np.einsum("ij,ij->i", y, x))) / x.shape[0]
 
     @staticmethod
-    def get_dBCELF(y: ndarray) -> Callable[[ndarray], ndarray]:
-        """Derivative of the Batched Cross Entropy Loss Function."""
-
-        def dBCELF(x: ndarray) -> ndarray:
-            return -np.sum(y / (x + 1e-15)) / x.shape[0]
-
-        return dBCELF
+    def dTCELF(y: ndarray, x: ndarray) -> ndarray:
+        """Derivative of the Total Cross Entropy Loss Function."""
+        return -np.sum(y / (x + 1e-15)) / x.shape[0]
 
     @staticmethod
-    def get_CELF(y: ndarray) -> Callable[[ndarray], ndarray]:
+    def CELF(y: ndarray, x: ndarray) -> Callable[[ndarray], ndarray]:
         """Cross Entropy Loss Function."""
-
-        def CELF(x: ndarray) -> ndarray:
-            return -np.log(np.dot(y, x))
-
-        return CELF
+        return -np.log(np.dot(y, x))
 
     @staticmethod
-    def get_dCELF(truth: ndarray) -> Callable[[ndarray], ndarray]:
+    def dCELF(y: ndarray, x: ndarray) -> Callable[[ndarray], ndarray]:
         """Derivative of the Cross Entropy Loss Function."""
-
-        def dCELF(x: ndarray) -> ndarray:
-            return -truth / (x + 1e-15)
-
-        return dCELF
+        return -y / (x + 1e-15)
 
 
 def main() -> int:
@@ -170,7 +152,7 @@ def main() -> int:
         av.drops = av.drops.split(';') if av.drops != '' else []
         df.columns = df.columns.map(str)
         teacher = Teacher(df.drop(av.drops, axis=1), answer=av.answer)
-        teacher.teach(epoch=1)
+        teacher.teach(epoch=100)
         return 0
     except Exception as err:
         if av.debug:

@@ -31,13 +31,13 @@ class Layer:
                 raise ValueError("neurons can't be empty")
             case 1:
                 self._neurons: Neuron = neurons[0]
-                self.__class__.__call__ = Layer._vect_call
+                self.eval = self._vect_eval
                 self.wdiff = self._vect_wdiff
             case _:
                 if len(neurons) != len(weights):
                     raise ValueError("matrix' shape doesn't fit neuron list")
                 self._neurons: list[Neuron] = neurons
-                self.__class__.__call__ = Layer._call
+                self.eval = self._eval
                 self.wdiff = self._wdiff
 
     def __len__(self: Self) -> int:
@@ -54,53 +54,56 @@ class Layer:
             string += f"\n\t{self._neurons}"
         return string
 
-    def _vect_call(self: Self, input: ndarray) -> ndarray:
+    def eval(self: Self, x: ndarray) -> ndarray:
+        """Placeholder for the eval method dynamically attributed."""
+        pass
+
+    def _vect_eval(self: Self, x: ndarray) -> ndarray:
         """Computes layer's weighted output as a single-neural layer.
 
         Args:
-            If weights are a (l, m) matrix, <input> is expected to have
+            If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        input = self._matrix @ input
-        return self._neurons(input)
+        x = self._matrix @ x.T
+        return self._neurons(x.T)
 
-    def _vect_wdiff(self: Self, input: ndarray) -> ndarray:
+    def _vect_wdiff(self: Self, x: ndarray) -> ndarray:
         """Weighted derivative function of the layer. Computes differential in
-        <self._weigths> @ <input> as a single-neural layer.
+        <self._weigths> @ <x> as a single-neural layer.
 
         Args:
-            If weights are a (l, m) matrix, <input> is expected to have
+            If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        input = self._matrix @ input
-        return self._neurons.diff(input)
+        x = self._matrix @ x
+        return self._neurons.diff(x)
 
-    def _call(self: Self, input: ndarray) -> ndarray:
+    def _eval(self: Self, x: ndarray) -> ndarray:
         """Computes layer's weighted output as a multi-neural layer.
 
         Args:
-            If weights are a (l, m) matrix, <input> is expected to have
+            If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        input = self._matrix @ input
-        out = np.empty(len(self._matrix), float)
-        for i in range(len(self._matrix)):
-            out[i] = self._neurons[i](input[i])
-        return out
+        x = self._matrix @ x.T
+        for i in range(x.shape[0]):
+            x[i] = self._neurons[i](x[i])
+        return x.T
 
-    def _wdiff(self: Self, input: ndarray) -> ndarray:
+    def _wdiff(self: Self, x: ndarray) -> ndarray:
         """Weighted derivative function of the layer. Computes differential in
-        <self._weigths> @ <input> as a multi-neural layer.
+        <self._weigths> @ <x> as a multi-neural layer.
 
         By construction of the layer, the differential is a diagonal matrix.
         Args:
-            If weights are a (l, m) matrix, <input> is expected to have
+            If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        input = self._matrix @ input
+        x = self._matrix @ x
         out = np.zeros((len(self._matrix), len(self._matrix)), float)
         for i in range(len(self._matrix)):
-            out[i, i] = self._neurons[i].diff(input[i])
+            out[i, i] = self._neurons[i].diff(x[i])
         return out
 
     @property
@@ -128,7 +131,7 @@ def main() -> int:
         matrix = np.random.rand(numbr, len(vectr))
         print(f"Matrix is\n\n{matrix}")
         layer = Layer([Neuron(funct, deriv)] * numbr, matrix)
-        print(f"\nlayer({vectr.T}) = \n\n{layer(vectr)}\n")
+        print(f"\nlayer({vectr.T}) = \n\n{layer.eval(vectr)}\n")
         print(f"\nlayer.deriv({vectr.T}) = \n\n{layer.wdiff(vectr)}\n")
         return 0
     except Exception as err:
