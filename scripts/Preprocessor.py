@@ -66,15 +66,21 @@ class Preprocessor:
         """Standardizes the current dataset and stores the process."""
         mean = self._stat.loc["Mean"].to_numpy()
         std = self._stat.loc["Std"].to_numpy()
-        return self._apply_process(lambda x: (x - mean) / std)
+        return self._apply(lambda x: (x - mean) / std)
 
-    def normalize(self: Self) -> Self:
-        """Normalizes the current dataset and stores the process."""
+    def normalize(self: Self, b: list[float] = [0, 1]) -> Self:
+        """Normalizes the current dataset and stores the process.
+
+        Args:
+            <b> represents the wanted interval.
+        Returns:
+            The current instance of the class.
+        """
         min = self._stat.loc["Min"].to_numpy()
         scale = self._stat.loc["Max"].to_numpy() - min
-        return self._apply_process(lambda x: (x - min) / scale)
+        return self._apply(lambda x: b[0] + (b[1] - b[0]) * (x - min) / scale)
 
-    def _apply_process(self: Self, func: Callable) -> Self:
+    def _apply(self: Self, func: Callable) -> Self:
         """Apply given <func> to <self._data>."""
         if self._process == Preprocessor.identity:
             self._process = func
@@ -99,8 +105,8 @@ def main() -> int:
         print("Data", book, sep="\n\n", end="\n\n")
         processor.standardize()
         print("Standaridzed", processor.data, sep="\n\n", end="\n\n")
-        processor.normalize()
-        print("Normalized", processor.data, sep="\n\n", end="\n\n")
+        processor.normalize([-1, 1])
+        print("Normalized [-1, 1]", processor.data, sep="\n\n", end="\n\n")
         data = book.drop([0], axis=1)
         print("Reset", book, sep="\n\n", end="\n\n")
         print("Composition", processor.process(data), sep="\n\n", end="\n\n")

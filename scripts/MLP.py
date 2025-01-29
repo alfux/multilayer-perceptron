@@ -67,6 +67,16 @@ class MLP:
         """Getter for the cost function."""
         return self._cost
 
+    @property
+    def learning_rate(self: Self) -> float:
+        """Getter for the learning_rate."""
+        return self._lr
+
+    @learning_rate.setter
+    def learning_rate(self: Self, value: float) -> None:
+        """Setter for the learning_rate."""
+        self._lr = value
+
     def eval(self: Self, x: ndarray) -> ndarray:
         """Placeholder for the eval method dynamically attributed."""
         pass
@@ -90,14 +100,11 @@ class MLP:
             Last element is the last layer's output.
             It is computed during a forward pass
         """
-        operand1 = self._layers[-1].wdiff(input[-2])
-        operand2 = self._cost.diff(y, input[-1])
-        dk = operand1 @ operand2
+        dk = self._layers[-1].wdiff(input[-2]) @ self._cost.diff(y, input[-1])
         self._layers[-1].W -= self._lr * np.outer(dk, input[-2])
         for i in range(len(self._layers) - 2, -1, -1):
             dk = self._layers[i].wdiff(input[i]) @ self._layers[i + 1].W.T @ dk
-            inter = self._lr * np.outer(dk, input[i])
-            self._layers[i].W -= inter
+            self._layers[i].W -= self._lr * np.outer(dk, input[i])
 
     def _forward_pass(self: Self, x: ndarray) -> Generator:
         """Generates an array with inputs of each layer (cost included)."""

@@ -27,9 +27,12 @@ class Teacher:
             <mlp> is a MLP instance. Provide it as key word argument in order
             to train it instead of the basic generated MLP.
         """
-        self._preprocessor = Preprocessor(book, **kwargs)
-        self._lesson: ndarray = self._preprocessor.normalize().data
-        self._truth: ndarray = self._preprocessor.to_onehot().onehot
+        self._prep = Preprocessor(book, **kwargs)
+        if "normal" in kwargs:
+            self._lesson: ndarray = self._prep.normalize(kwargs["normal"]).data
+        else:
+            self._lesson: ndarray = self._prep.data
+        self._truth: ndarray = self._prep.to_onehot().onehot
         self._mlp: MLP = kwargs["mlp"] if "mlp" in kwargs else self._auto_mlp()
 
     @property
@@ -51,6 +54,7 @@ class Teacher:
             <e> is the precision under which the training stops because the
             Cross Entropy Loss is small enough.
         """
+        # Adapt learning rate
         if epoch <= 0:
             while Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)) > e:
                 self._mlp.update(self._lesson)
@@ -64,14 +68,16 @@ class Teacher:
 
     def _auto_mlp(self: Self) -> MLP:
         """Generates a basic MLP based on the given DataFrame."""
-        n_in = self._lesson.shape[1]
-        n_out = len(self._preprocessor.unique)
+        nx = self._lesson.shape[1]
+        ny = len(self._prep.unique)
         neuron = Neuron(Teacher.ReLU, Teacher.dReLU)
-        layers = [Layer([neuron] * n_in, rng.rand(n_in, n_in) / n_in)]
-        for i in range(n_in, n_out, -1):
-            layers += [Layer([neuron] * (i - 1), rng.rand(i - 1, i) / i)]
+        layers = [Layer([neuron] * nx, rng.randn(nx, nx) * np.sqrt(2 / nx))]
+        for i in range(nx, ny, -1):
+            layers += [
+                Layer([neuron] * (i - 1), rng.randn(i - 1, i) * np.sqrt(2 / i))
+            ]
         neuron = Neuron(Teacher.softmax, Teacher.dsoftmax)
-        layers += [Layer([neuron], rng.rand(n_out, n_out) / n_out)]
+        layers += [Layer([neuron], rng.randn(ny, ny) * np.sqrt(2 / ny))]
         cel = Teacher.CELF
         dcel = Teacher.dCELF
         return MLP(layers, Neuron(cel, dcel), learning_rate=1e-3)
@@ -143,16 +149,15 @@ def main() -> int:
         av.add_argument("path", help="CSV file containing the lesson")
         help = "flag when the CSV file doesn't have headers"
         av.add_argument("--no-header", action="store_true", help=help)
-        help = "answer column of the dataset"
-        av.add_argument("answer", help=help)
+        av.add_argument("answer", help="answer column of the dataset")
         help = "semicolon separated list of drops"
         av.add_argument("drops", help=help, nargs='?', default='')
+        av.add_argument("-n", default="[-1, 1]", help="normal parameter")
         av = av.parse_args()
         df = pd.read_csv(av.path, header=None if av.no_header else 0)
-        av.drops = av.drops.split(';') if av.drops != '' else []
         df.columns = df.columns.map(str)
-        teacher = Teacher(df.drop(av.drops, axis=1), answer=av.answer)
-        teacher.teach(epoch=100)
+        df = df.drop(av.drops.split(';') if av.drops != '' else [], axis=1)
+        Teacher(df, answer=av.answer, normal=eval(av.n)).teach(epoch=100)
         return 0
     except Exception as err:
         if av.debug:
