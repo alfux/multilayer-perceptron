@@ -45,7 +45,7 @@ class Teacher:
         """Setter for the mlp model."""
         self._mlp = value
 
-    def teach(self: Self, epoch: int = -1, e: float = 1e-3) -> Self:
+    def teach(self: Self, epoch: int, path: str = "./unnamed.mlp") -> Self:
         """Teaches the lesson to the internal MLP.
 
         Args:
@@ -53,34 +53,34 @@ class Teacher:
             given <epoch> is 0 or less, precision is used to end the training.
             <e> is the precision under which the training stops because the
             Cross Entropy Loss is small enough.
+            <path> is the saving path of the trained MLP.
         """
-        # Adapt learning rate
-        if epoch <= 0:
-            while Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)) > e:
-                self._mlp.update(self._lesson)
-        else:
-            for _ in range(epoch):
-                print(Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)))
-                self._mlp.update(self._truth, self._lesson)
+
+        loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
+        for _ in range(epoch):
+            self._mlp.update(self._truth, self._lesson)
+            loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
+            print(f"loss = {loss}, LR = {self._mlp.learning_rate}")
         print(Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)))
-        # Add preprocess after training
+        self._mlp.preprocess = self._prep.process
+        self._mlp.save(path)
         return self
 
     def _auto_mlp(self: Self) -> MLP:
         """Generates a basic MLP based on the given DataFrame."""
-        nx = self._lesson.shape[1]
-        ny = len(self._prep.unique)
+        (nx, ny) = (self._lesson.shape[1], len(self._prep.unique))
         neuron = Neuron(Teacher.ReLU, Teacher.dReLU)
-        layers = [Layer([neuron] * nx, rng.randn(nx, nx) * np.sqrt(2 / nx))]
+        layers = [Layer([neuron] * nx, rng.randn(nx, nx + 1) * np.sqrt(2 / (nx + 1)))]
         for i in range(nx, ny, -1):
-            layers += [
-                Layer([neuron] * (i - 1), rng.randn(i - 1, i) * np.sqrt(2 / i))
-            ]
+            layers += [Layer(
+                [neuron] * (i - 1),
+                rng.randn(i - 1, i + 1) * np.sqrt(2 / (i + 1))
+            )]
         neuron = Neuron(Teacher.softmax, Teacher.dsoftmax)
-        layers += [Layer([neuron], rng.randn(ny, ny) * np.sqrt(2 / ny))]
+        layers += [Layer([neuron], rng.randn(ny, ny + 1) * np.sqrt(2 / (ny + 1)))]
         cel = Teacher.CELF
         dcel = Teacher.dCELF
-        return MLP(layers, Neuron(cel, dcel), learning_rate=1e-3)
+        return MLP(layers, Neuron(cel, dcel), learning_rate=1e-4)
 
     @staticmethod
     def softmax(x: ndarray) -> ndarray:
@@ -157,7 +157,7 @@ def main() -> int:
         df = pd.read_csv(av.path, header=None if av.no_header else 0)
         df.columns = df.columns.map(str)
         df = df.drop(av.drops.split(';') if av.drops != '' else [], axis=1)
-        Teacher(df, answer=av.answer, normal=eval(av.n)).teach(epoch=100)
+        Teacher(df, answer=av.answer, normal=eval(av.n)).teach(epoch=1000)
         return 0
     except Exception as err:
         if av.debug:

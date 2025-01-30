@@ -22,20 +22,34 @@ class Neuron:
             <f> and <df> must be a C1 single parameter real function and it's
             derivative, respectively.
         """
-        self._f: Callable = f
-        self._df: Callable = df
-
-    def __call__(self: Self, *args: list) -> float | ndarray:
-        """Computes neuron's output."""
-        return self._f(*args)
+        self.eval: Callable = f
+        self.diff: Callable = df
 
     def __repr__(self: Self) -> str:
         """String representation of the object."""
-        return f"{self._f.__name__},{self._df.__name__}"
+        return f"{self.eval.__name__},{self.diff.__name__}"
 
-    def diff(self: Self, *args: list) -> float | ndarray:
-        """Derivative of the neuron. Computes differential in point x."""
-        return self._df(*args)
+    def eval(self: Self, *args: list) -> ndarray:
+        """Computes neuron's output.
+
+        Args:
+            <*args> the function is dynamically allocated and takes same
+            arguments as the given function.
+        Returns:
+            The function's output as an ndarray
+        """
+        pass
+
+    def diff(self: Self, *args: list) -> ndarray:
+        """Derivative of the neuron. Computes differential in point x.
+
+        Args:
+            <*args> the function is dynamically allocated and takes same
+            arguments as the given function.
+        Returns:
+            The function's output as an ndarray
+        """
+        pass
 
 
 def main() -> None:

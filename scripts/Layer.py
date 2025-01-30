@@ -65,8 +65,12 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
+        if x.ndim == 2:
+            x = np.concat([np.ones((x.shape[0], 1)), x], axis=1)
+        else:
+            x = np.concat([[1], x])
         x = self._matrix @ x.T
-        return self._neurons(x.T)
+        return self._neurons.eval(x.T)
 
     def _vect_wdiff(self: Self, x: ndarray) -> ndarray:
         """Weighted derivative function of the layer. Computes differential in
@@ -76,6 +80,7 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
+        x = np.concat([[1], x])
         x = self._matrix @ x
         return self._neurons.diff(x)
 
@@ -86,9 +91,13 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
+        if x.ndim == 2:
+            x = np.concat([np.ones((x.shape[0], 1)), x], axis=1)
+        else:
+            x = np.concat([[1], x])
         x = self._matrix @ x.T
         for i in range(x.shape[0]):
-            x[i] = self._neurons[i](x[i])
+            x[i] = self._neurons[i].eval(x[i])
         return x.T
 
     def _wdiff(self: Self, x: ndarray) -> ndarray:
@@ -100,6 +109,7 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
+        x = np.concat([[1], x])
         x = self._matrix @ x
         out = np.zeros((len(self._matrix), len(self._matrix)), float)
         for i in range(len(self._matrix)):
