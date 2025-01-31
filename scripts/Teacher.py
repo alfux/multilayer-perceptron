@@ -5,7 +5,6 @@ from typing import Self, Callable
 
 import numpy as np
 from numpy import ndarray
-import numpy.random as rng
 import pandas as pd
 from pandas import DataFrame
 
@@ -28,12 +27,10 @@ class Teacher:
             to train it instead of the basic generated MLP.
         """
         self._prep = Preprocessor(book, **kwargs)
-        if "normal" in kwargs:
-            self._lesson: ndarray = self._prep.normalize(kwargs["normal"]).data
-        else:
-            self._lesson: ndarray = self._prep.data
+        self._prep.normalize(kwargs.get("normal", [0, 1])).add_bias()
+        self._lesson: ndarray = self._prep.data
         self._truth: ndarray = self._prep.to_onehot().onehot
-        self._mlp: MLP = kwargs["mlp"] if "mlp" in kwargs else self._auto_mlp()
+        self._mlp: MLP = kwargs["mlp"] if "mlp" in kwargs else self._base_mlp()
 
     @property
     def mlp(self: Self) -> MLP:
@@ -55,7 +52,6 @@ class Teacher:
             Cross Entropy Loss is small enough.
             <path> is the saving path of the trained MLP.
         """
-
         loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
         for _ in range(epoch):
             self._mlp.update(self._truth, self._lesson)
@@ -66,21 +62,24 @@ class Teacher:
         self._mlp.save(path)
         return self
 
-    def _auto_mlp(self: Self) -> MLP:
+    def _base_mlp(self: Self) -> MLP:
         """Generates a basic MLP based on the given DataFrame."""
         (nx, ny) = (self._lesson.shape[1], len(self._prep.unique))
-        neuron = Neuron(Teacher.ReLU, Teacher.dReLU)
-        layers = [Layer([neuron] * nx, rng.randn(nx, nx + 1) * np.sqrt(2 / (nx + 1)))]
-        for i in range(nx, ny, -1):
-            layers += [Layer(
-                [neuron] * (i - 1),
-                rng.randn(i - 1, i + 1) * np.sqrt(2 / (i + 1))
-            )]
-        neuron = Neuron(Teacher.softmax, Teacher.dsoftmax)
-        layers += [Layer([neuron], rng.randn(ny, ny + 1) * np.sqrt(2 / (ny + 1)))]
+        activation = Neuron(Teacher.ReLU, Teacher.dReLU)
+        bias = Neuron(Teacher.bias, Teacher.dbias)
+        matrix: ndarray = np.random.randn(nx, nx) * np.sqrt(2 / nx)
+        matrix[-1] = np.zeros(matrix.shape[1])
+        layers = [Layer([activation] * (nx - 1) + [bias], matrix)]
+        for i in range(nx, ny + 1, -1):
+            matrix = np.random.randn(i - 1, i) * np.sqrt(2 / i)
+            matrix[-1] = np.zeros(matrix.shape[1])
+            layers += [Layer([activation] * (i - 2) + [bias], matrix)]
+        activation = Neuron(Teacher.softmax, Teacher.dsoftmax)
+        matrix = np.random.randn(ny, ny + 1) * np.sqrt(2 / (ny + 1))
+        layers += [Layer([activation], matrix)]
         cel = Teacher.CELF
         dcel = Teacher.dCELF
-        return MLP(layers, Neuron(cel, dcel), learning_rate=1e-4)
+        return MLP(layers, Neuron(cel, dcel), learning_rate=1e-3)
 
     @staticmethod
     def softmax(x: ndarray) -> ndarray:
@@ -139,6 +138,16 @@ class Teacher:
     def dCELF(y: ndarray, x: ndarray) -> Callable[[ndarray], ndarray]:
         """Derivative of the Cross Entropy Loss Function."""
         return -y / (x + 1e-15)
+
+    @staticmethod
+    def bias(x: ndarray) -> ndarray:
+        """Returns 1."""
+        return np.ones(np.atleast_1d(x).shape)
+
+    @staticmethod
+    def dbias(x: ndarray) -> ndarray:
+        """Returns 0."""
+        return np.zeros(np.atleast_1d(x).shape)
 
 
 def main() -> int:

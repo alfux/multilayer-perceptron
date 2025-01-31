@@ -41,13 +41,18 @@ class Preprocessor:
     @property
     def data(self: Self) -> ndarray:
         """Getter of the current unprocessed dataset."""
+        if isinstance(self._data, ndarray):
+            return self._data
         return self._data.to_numpy()
 
     @data.setter
     def data(self: Self, value) -> None:
         """Setter of the current dataset."""
         self._data = value
-        self._stat = Statistics(self._data).stats
+        if isinstance(self._data, ndarray):
+            self._stat = Statistics(DataFrame(self._data)).stats
+        else:
+            self._stat = Statistics(self._data).stats
 
     @property
     def process(self: Self) -> Callable[[ndarray], ndarray]:
@@ -64,6 +69,7 @@ class Preprocessor:
 
     def standardize(self: Self) -> Self:
         """Standardizes the current dataset and stores the process."""
+        self._stat = Statistics(self._data).stats
         mean = self._stat.loc["Mean"].to_numpy()
         std = self._stat.loc["Std"].to_numpy()
         return self._apply(lambda x: (x - mean) / std)
@@ -76,9 +82,14 @@ class Preprocessor:
         Returns:
             The current instance of the class.
         """
+        self._stat = Statistics(self._data).stats
         min = self._stat.loc["Min"].to_numpy()
         scale = self._stat.loc["Max"].to_numpy() - min
         return self._apply(lambda x: b[0] + (b[1] - b[0]) * (x - min) / scale)
+
+    def add_bias(self: Self) -> Self:
+        """Adds a bias component at the end of the vector."""
+        return self._apply(Preprocessor.adding_bias)
 
     def _apply(self: Self, func: Callable) -> Self:
         """Apply given <func> to <self._data>."""
@@ -89,6 +100,12 @@ class Preprocessor:
             self._process = lambda x: func(previous_process(x))
         self.data = func(self._data)
         return self
+
+    @staticmethod
+    def adding_bias(x: ndarray) -> ndarray:
+        if x.ndim == 2:
+            return np.column_stack([x, np.ones((x.shape[0], 1))])
+        return np.concat([x, np.ones(1)])
 
     @staticmethod
     def identity(x: ndarray) -> ndarray:

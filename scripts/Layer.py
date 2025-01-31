@@ -35,6 +35,8 @@ class Layer:
                 self.wdiff = self._vect_wdiff
             case _:
                 if len(neurons) != len(weights):
+                    print(weights.shape)
+                    print(len(neurons))
                     raise ValueError("matrix' shape doesn't fit neuron list")
                 self._neurons: list[Neuron] = neurons
                 self.eval = self._eval
@@ -54,8 +56,22 @@ class Layer:
             string += f"\n\t{self._neurons}"
         return string
 
+    @property
+    def W(self: Self) -> ndarray:
+        """Get the matrix of weights."""
+        return self._matrix
+
+    @W.setter
+    def W(self: Self, value: ndarray) -> None:
+        """Set the matrix of weights."""
+        self._matrix = value
+
     def eval(self: Self, x: ndarray) -> ndarray:
-        """Placeholder for the eval method dynamically attributed."""
+        """Computes layer's weighted output.
+
+        Args:
+            <x> is the input vector. It is first multiplied by <self._matrix>.
+        """
         pass
 
     def _vect_eval(self: Self, x: ndarray) -> ndarray:
@@ -65,12 +81,8 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        if x.ndim == 2:
-            x = np.concat([np.ones((x.shape[0], 1)), x], axis=1)
-        else:
-            x = np.concat([[1], x])
-        x = self._matrix @ x.T
-        return self._neurons.eval(x.T)
+        x = (self._matrix @ x.T).T
+        return self._neurons.eval(x)
 
     def _vect_wdiff(self: Self, x: ndarray) -> ndarray:
         """Weighted derivative function of the layer. Computes differential in
@@ -80,8 +92,7 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        x = np.concat([[1], x])
-        x = self._matrix @ x
+        x = (self._matrix @ x.T).T
         return self._neurons.diff(x)
 
     def _eval(self: Self, x: ndarray) -> ndarray:
@@ -91,10 +102,6 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        if x.ndim == 2:
-            x = np.concat([np.ones((x.shape[0], 1)), x], axis=1)
-        else:
-            x = np.concat([[1], x])
         x = self._matrix @ x.T
         for i in range(x.shape[0]):
             x[i] = self._neurons[i].eval(x[i])
@@ -109,22 +116,11 @@ class Layer:
             If weights are a (l, m) matrix, <x> is expected to have
             length m.
         """
-        x = np.concat([[1], x])
         x = self._matrix @ x
         out = np.zeros((len(self._matrix), len(self._matrix)), float)
         for i in range(len(self._matrix)):
             out[i, i] = self._neurons[i].diff(x[i])
         return out
-
-    @property
-    def W(self: Self) -> ndarray:
-        """Get the matrix of weights."""
-        return self._matrix
-
-    @W.setter
-    def W(self: Self, value: ndarray) -> None:
-        """Set the matrix of weights."""
-        self._matrix = value
 
 
 def main() -> int:

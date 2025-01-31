@@ -167,7 +167,7 @@ class MLP:
             <x> is supposed to be a (m, n) matrix where m is the number of
             entries of the input layer plus one.
         """
-        self._preprocess(x)
+        x = self._preprocess(x)
         for layer in self._layers:
             x = layer.eval(x)
         return x
