@@ -53,7 +53,8 @@ class Teacher:
             <path> is the saving path of the trained MLP.
         """
         loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
-        for _ in range(epoch):
+        for i in range(epoch):
+            print(f"Epoch {i}")
             self._mlp.update(self._truth, self._lesson)
             loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
             print(f"loss = {loss}, LR = {self._mlp.learning_rate}")

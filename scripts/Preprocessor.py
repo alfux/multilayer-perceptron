@@ -25,6 +25,8 @@ class Preprocessor:
         self._onehot: DataFrame = dataset[labels]
         self._unique: ndarray = None
         self._data: DataFrame = dataset.drop([labels], axis=1)
+        fixed = (self._data == self._data.iloc[0]).all(axis=0)
+        self._data = self._data.loc[:,~fixed]
         self._stat: DataFrame = Statistics(self._data).stats
         self._process: Callable = Preprocessor.identity
 
@@ -69,7 +71,6 @@ class Preprocessor:
 
     def standardize(self: Self) -> Self:
         """Standardizes the current dataset and stores the process."""
-        self._stat = Statistics(self._data).stats
         mean = self._stat.loc["Mean"].to_numpy()
         std = self._stat.loc["Std"].to_numpy()
         return self._apply(lambda x: (x - mean) / std)
@@ -82,7 +83,6 @@ class Preprocessor:
         Returns:
             The current instance of the class.
         """
-        self._stat = Statistics(self._data).stats
         min = self._stat.loc["Min"].to_numpy()
         scale = self._stat.loc["Max"].to_numpy() - min
         return self._apply(lambda x: b[0] + (b[1] - b[0]) * (x - min) / scale)
