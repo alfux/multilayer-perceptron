@@ -58,7 +58,8 @@ class Teacher:
             self._mlp.update(self._truth, self._lesson)
             loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
             print(f"loss = {loss}, LR = {self._mlp.learning_rate}")
-        print(Teacher.TCELF(self._truth, self._mlp.eval(self._lesson)))
+            if loss < np.log(len(self._prep.unique)):
+                break
         self._mlp.preprocess = self._prep.process
         self._mlp.save(path)
         return self
@@ -162,7 +163,7 @@ def main() -> int:
         av.add_argument("answer", help="answer column of the dataset")
         help = "semicolon separated list of drops"
         av.add_argument("drops", help=help, nargs='?', default='')
-        av.add_argument("-n", default="[-1, 1]", help="normal parameter")
+        av.add_argument("-n", default="[-1, 1]", help="normalization interval")
         av = av.parse_args()
         df = pd.read_csv(av.path, header=None if av.no_header else 0)
         df.columns = df.columns.map(str)

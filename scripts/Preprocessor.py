@@ -37,7 +37,7 @@ class Preprocessor:
 
     @property
     def unique(self: Self) -> ndarray:
-        """Getter the ordered list of unique labels."""
+        """Getter of the ordered list of unique labels."""
         return self._unique
 
     @property
