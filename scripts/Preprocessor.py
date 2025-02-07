@@ -26,7 +26,7 @@ class Preprocessor:
         self._unique: ndarray = None
         self._data: DataFrame = dataset.drop([labels], axis=1)
         fixed = (self._data == self._data.iloc[0]).all(axis=0)
-        self._data = self._data.loc[:,~fixed]
+        self._data = self._data.loc[:, ~fixed]
         self._stat: DataFrame = Statistics(self._data).stats
         self._process: Callable = Preprocessor.identity
 

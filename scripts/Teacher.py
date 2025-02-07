@@ -1,7 +1,7 @@
 import argparse as arg
 import sys
 import traceback
-from typing import Self, Callable
+from typing import Self
 
 import numpy as np
 from numpy import ndarray
@@ -17,20 +17,24 @@ from Preprocessor import Preprocessor
 class Teacher:
     """This class aims to find the best suited MLP to given parameters."""
 
+    class BadTeacher(Exception):
+        """Teacher specific exceptions."""
+        pass
+
     def __init__(self: Self, book: DataFrame, **kwargs: dict) -> None:
         """Creates an MLP Teacher.
 
         Args:
-            <book> is a DataFrame containing the lesson and the answers.
+            <book> is a DataFrame containing the exercies and the lessons.
         Kwargs:
             <mlp> is a MLP instance. Provide it as key word argument in order
             to train it instead of the basic generated MLP.
         """
         self._prep = Preprocessor(book, **kwargs)
         self._prep.normalize(kwargs.get("normal", [0, 1])).add_bias()
-        self._lesson: ndarray = self._prep.data
-        self._truth: ndarray = self._prep.to_onehot().onehot
-        self._mlp: MLP = kwargs["mlp"] if "mlp" in kwargs else self._base_mlp()
+        self._exercise: ndarray = self._prep.data
+        self._lesson: ndarray = self._prep.to_onehot().onehot
+        self._mlp: MLP = kwargs.get("mlp", None)
 
     @property
     def mlp(self: Self) -> MLP:
@@ -52,11 +56,13 @@ class Teacher:
             Cross Entropy Loss is small enough.
             <path> is the saving path of the trained MLP.
         """
-        loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
+        if self._mlp is None:
+            raise Teacher.BadTeacher("No MLP loaded.")
+        loss = Teacher.TCELF(self._lesson, self._mlp.eval(self._exercise))
         for i in range(epoch):
             print(f"Epoch {i}")
-            self._mlp.update(self._truth, self._lesson)
-            loss = Teacher.TCELF(self._truth, self._mlp.eval(self._lesson))
+            self._mlp.update(self._lesson, self._exercise)
+            loss = Teacher.TCELF(self._lesson, self._mlp.eval(self._exercise))
             print(f"loss = {loss}, LR = {self._mlp.learning_rate}")
             if loss < np.log(len(self._prep.unique)):
                 break
@@ -64,9 +70,27 @@ class Teacher:
         self._mlp.save(path)
         return self
 
-    def _base_mlp(self: Self) -> MLP:
-        """Generates a basic MLP based on the given DataFrame."""
-        (nx, ny) = (self._lesson.shape[1], len(self._prep.unique))
+    def basic_mlp_regressor(self: Self) -> MLP:
+        """Generates a basic MLP regressor based on the given DataFrame."""
+        nx = self._exercise.shape[1]
+        activation = Neuron(Teacher.ReLU, Teacher.dReLU)
+        bias = Neuron(Teacher.bias, Teacher.dbias)
+        matrix: ndarray = np.random.randn(nx, nx) * np.sqrt(2 / nx)
+        matrix[-1] = np.zeros(matrix.shape[1])
+        layers = [Layer([activation] * (nx - 1) + [bias], matrix)]
+        for i in range(nx, 3, -1):
+            matrix = np.random.randn(i - 1, i) * np.sqrt(2 / i)
+            matrix[-1] = np.zeros(matrix.shape[1])
+            layers += [Layer([activation] * (i - 2) + [bias], matrix)]
+        matrix = np.random.randn(1, 3) * np.sqrt(2 / 3)
+        layers += [Layer([activation], matrix)]
+        mse = Teacher.MSE
+        dmse = Teacher.dMSE
+        return MLP(layers, Neuron(mse, dmse), learning_rate=1e-3)
+
+    def basic_mlp_classifier(self: Self) -> MLP:
+        """Generates a basic MLP classifier based on the given DataFrame."""
+        (nx, ny) = (self._exercise.shape[1], len(self._prep.unique))
         activation = Neuron(Teacher.ReLU, Teacher.dReLU)
         bias = Neuron(Teacher.bias, Teacher.dbias)
         matrix: ndarray = np.random.randn(nx, nx) * np.sqrt(2 / nx)
@@ -79,9 +103,9 @@ class Teacher:
         activation = Neuron(Teacher.softmax, Teacher.dsoftmax)
         matrix = np.random.randn(ny, ny + 1) * np.sqrt(2 / (ny + 1))
         layers += [Layer([activation], matrix)]
-        cel = Teacher.CELF
-        dcel = Teacher.dCELF
-        return MLP(layers, Neuron(cel, dcel), learning_rate=1e-3)
+        celf = Teacher.CELF
+        dcelf = Teacher.dCELF
+        return MLP(layers, Neuron(celf, dcelf), learning_rate=1e-3)
 
     @staticmethod
     def softmax(x: ndarray) -> ndarray:
@@ -132,14 +156,24 @@ class Teacher:
         return -np.sum(y / (x + 1e-15)) / x.shape[0]
 
     @staticmethod
-    def CELF(y: ndarray, x: ndarray) -> Callable[[ndarray], ndarray]:
+    def CELF(y: ndarray, x: ndarray) -> ndarray:
         """Cross Entropy Loss Function."""
         return -np.log(np.dot(y, x))
 
     @staticmethod
-    def dCELF(y: ndarray, x: ndarray) -> Callable[[ndarray], ndarray]:
+    def dCELF(y: ndarray, x: ndarray) -> ndarray:
         """Derivative of the Cross Entropy Loss Function."""
         return -y / (x + 1e-15)
+
+    @staticmethod
+    def MSE(y: ndarray, x: ndarray) -> ndarray:
+        """Mean Squared Error function."""
+        return np.sum((y - x) ** 2) / np.size(x)
+
+    @staticmethod
+    def dMSE(y: ndarray, x: ndarray) -> ndarray:
+        """Derivative of the Mean Squared Error function."""
+        return -2 * (y - x) / np.size(x)
 
     @staticmethod
     def bias(x: ndarray) -> ndarray:
@@ -168,7 +202,9 @@ def main() -> int:
         df = pd.read_csv(av.path, header=None if av.no_header else 0)
         df.columns = df.columns.map(str)
         df = df.drop(av.drops.split(';') if av.drops != '' else [], axis=1)
-        Teacher(df, answer=av.answer, normal=eval(av.n)).teach(epoch=1000)
+        teacher = Teacher(df, answer=av.answer, normal=eval(av.n))
+        teacher.mlp = teacher.basic_mlp_classifier()
+        teacher.teach(epoch=1000)
         return 0
     except Exception as err:
         if av.debug:
