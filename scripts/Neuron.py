@@ -51,6 +51,11 @@ class Neuron:
         """
         pass
 
+    def save(self: Self) -> Self:
+        """Saves the current neuron."""
+        print(f"Neuron({}, {})")
+        return self
+
 
 def main() -> None:
     """Displays neuron output from dataset input."""
@@ -63,8 +68,9 @@ def main() -> None:
                 deriv = eval(input("\tderiv: "))
                 neuron = Neuron(funct, deriv)
                 value = np.random.rand(1)
-                print(f"\t\tfunc({value}) = {neuron(value)}")
+                print(f"\t\tfunc({value}) = {neuron.eval(value)}")
                 print(f"\t\tfunc.deriv({value}) = {neuron.diff(value)}")
+                neuron.save()
             except Exception as err:
                 print(f"Error: {type(err).__name__}: {err}", file=sys.stderr)
             finally:

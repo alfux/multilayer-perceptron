@@ -12,28 +12,28 @@ from Statistics import Statistics
 class Preprocessor:
     """Create an instance of this class to preprocess a dataset."""
 
-    def __init__(self: Self, dataset: DataFrame, **kwargs: dict) -> None:
+    def __init__(self: Self, dataset: DataFrame, target: str | int) -> None:
         """Creates a preprocessor for a given dataset.
 
         Args:
             <dataset> is the DataFrame to preprocess.
-        Kwargs:
             <labels> is the column of the DataFrame containing classification
             characters.
         """
-        labels = kwargs["labels"] if "labels" in kwargs else dataset.columns[0]
-        self._onehot: DataFrame = dataset[labels]
+        if target is None:
+            target = dataset.columns[0]
+        self._target: DataFrame = dataset[target].to_numpy()
         self._unique: ndarray = None
-        self._data: DataFrame = dataset.drop([labels], axis=1)
-        fixed = (self._data == self._data.iloc[0]).all(axis=0)
-        self._data = self._data.loc[:, ~fixed]
+        self._data: DataFrame = dataset.drop([target], axis=1)
+        constant = (self._data == self._data.iloc[0]).all(axis=0)
+        self._data = self._data.loc[:, ~constant]
         self._stat: DataFrame = Statistics(self._data).stats
         self._process: Callable = Preprocessor.identity
 
     @property
-    def onehot(self: Self) -> ndarray:
-        """Getter for the onehot encoded labels."""
-        return self._onehot
+    def target(self: Self) -> ndarray:
+        """Getter for the target feature."""
+        return self._target
 
     @property
     def unique(self: Self) -> ndarray:
@@ -64,8 +64,8 @@ class Preprocessor:
     def to_onehot(self: Self) -> Self:
         """Transform the label field in a vectorized equivalent."""
         if self._unique is None:
-            (uni, inv) = np.unique(self._onehot, return_inverse=True)
-            self._onehot = np.eye(len(uni))[inv]
+            (uni, inv) = np.unique(self._target, return_inverse=True)
+            self._target = np.eye(len(uni))[inv]
             self._unique = uni
         return self
 
@@ -127,9 +127,9 @@ def main() -> int:
         data = book.drop([0], axis=1)
         print("Reset", book, sep="\n\n", end="\n\n")
         print("Composition", processor.process(data), sep="\n\n", end="\n\n")
-        print(processor.onehot, end="\n\n")
+        print(processor.target, end="\n\n")
         processor.to_onehot()
-        print(processor.onehot, end="\n\n")
+        print(processor.target, end="\n\n")
         return 0
     except Exception as err:
         print(traceback.format_exc())

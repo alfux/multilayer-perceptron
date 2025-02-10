@@ -21,20 +21,26 @@ class Teacher:
         """Teacher specific exceptions."""
         pass
 
-    def __init__(self: Self, book: DataFrame, **kwargs: dict) -> None:
+    def __init__(
+            self: Self,
+            book: DataFrame,
+            target: str | int,
+            normal: list = [0, 1],
+            mlp: MLP = None
+    ) -> None:
         """Creates an MLP Teacher.
 
         Args:
             <book> is a DataFrame containing the exercies and the lessons.
-        Kwargs:
-            <mlp> is a MLP instance. Provide it as key word argument in order
-            to train it instead of the basic generated MLP.
+            <target> is the column containing the target values.
+            <normal> is the normalization interval.
+            <mlp> is a MLP instance of a MultilayerPerceptron.
         """
-        self._prep = Preprocessor(book, **kwargs)
-        self._prep.normalize(kwargs.get("normal", [0, 1])).add_bias()
+        self._prep = Preprocessor(book, target)
+        self._prep.normalize(normal).add_bias()
         self._exercise: ndarray = self._prep.data
-        self._lesson: ndarray = self._prep.to_onehot().onehot
-        self._mlp: MLP = kwargs.get("mlp", None)
+        self._lesson: ndarray = self._prep.target
+        self._mlp: MLP = mlp
 
     @property
     def mlp(self: Self) -> MLP:
@@ -52,8 +58,6 @@ class Teacher:
         Args:
             <epoch> is the number of epoch to realise with the training. When
             given <epoch> is 0 or less, precision is used to end the training.
-            <e> is the precision under which the training stops because the
-            Cross Entropy Loss is small enough.
             <path> is the saving path of the trained MLP.
         """
         if self._mlp is None:
@@ -70,7 +74,7 @@ class Teacher:
         self._mlp.save(path)
         return self
 
-    def basic_mlp_regressor(self: Self) -> MLP:
+    def basic_regressor(self: Self) -> MLP:
         """Generates a basic MLP regressor based on the given DataFrame."""
         nx = self._exercise.shape[1]
         activation = Neuron(Teacher.ReLU, Teacher.dReLU)
@@ -88,7 +92,7 @@ class Teacher:
         dmse = Teacher.dMSE
         return MLP(layers, Neuron(mse, dmse), learning_rate=1e-3)
 
-    def basic_mlp_classifier(self: Self) -> MLP:
+    def basic_classifier(self: Self) -> MLP:
         """Generates a basic MLP classifier based on the given DataFrame."""
         (nx, ny) = (self._exercise.shape[1], len(self._prep.unique))
         activation = Neuron(Teacher.ReLU, Teacher.dReLU)
@@ -202,8 +206,8 @@ def main() -> int:
         df = pd.read_csv(av.path, header=None if av.no_header else 0)
         df.columns = df.columns.map(str)
         df = df.drop(av.drops.split(';') if av.drops != '' else [], axis=1)
-        teacher = Teacher(df, answer=av.answer, normal=eval(av.n))
-        teacher.mlp = teacher.basic_mlp_classifier()
+        teacher = Teacher(df, target=av.answer, normal=eval(av.n))
+        teacher.mlp = teacher.basic_regressor()
         teacher.teach(epoch=1000)
         return 0
     except Exception as err:
