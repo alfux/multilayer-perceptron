@@ -29,6 +29,15 @@ class Preprocessor:
         self._data = self._data.loc[:, ~constant]
         self._stat: DataFrame = Statistics(self._data).stats
         self._process: Callable = Preprocessor.identity
+        self._repr = "lambda x: x"
+
+    def __call__(self: Self, x: ndarray) -> ndarray:
+        "Calling method of the preprocessor."
+        return self._process(x)
+
+    def __repr__(self: Self) -> str:
+        """String representation of the object. Can be used with eval()."""
+        return self._repr
 
     @property
     def target(self: Self) -> ndarray:
@@ -56,11 +65,6 @@ class Preprocessor:
         else:
             self._stat = Statistics(self._data).stats
 
-    @property
-    def process(self: Self) -> Callable[[ndarray], ndarray]:
-        """Returns the composition of process applied over the dataset."""
-        return self._process
-
     def to_onehot(self: Self) -> Self:
         """Transform the label field in a vectorized equivalent."""
         if self._unique is None:
@@ -70,10 +74,14 @@ class Preprocessor:
         return self
 
     def standardize(self: Self) -> Self:
-        """Standardizes the current dataset and stores the process."""
+        """Standardizes the current dataset and stores the process.
+
+        Returns:
+            The current instance of the class.
+        """
         mean = self._stat.loc["Mean"].to_numpy()
         std = self._stat.loc["Std"].to_numpy()
-        return self._apply(lambda x: (x - mean) / std)
+        return self._apply(f"lambda x: (x - {mean}) / {std})")
 
     def normalize(self: Self, b: list[float] = [0, 1]) -> Self:
         """Normalizes the current dataset and stores the process.
@@ -83,23 +91,49 @@ class Preprocessor:
         Returns:
             The current instance of the class.
         """
-        min = self._stat.loc["Min"].to_numpy()
-        scale = self._stat.loc["Max"].to_numpy() - min
-        return self._apply(lambda x: b[0] + (b[1] - b[0]) * (x - min) / scale)
+        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
+        minium = self._stat.loc["Min"].to_numpy()
+        scale = self._stat.loc["Max"].to_numpy() - minium
+        strepr = f"lambda x: {b[0]} + {b[1] - b[0]} * (x - np."
+        strepr += f"{repr(minium)}) / np.{repr(scale)}"
+        np.set_printoptions()
+        return self._apply(strepr)
 
     def add_bias(self: Self) -> Self:
         """Adds a bias component at the end of the vector."""
-        return self._apply(Preprocessor.adding_bias)
+        return self._apply("Preprocessor.adding_bias")
 
-    def _apply(self: Self, func: Callable) -> Self:
-        """Apply given <func> to <self._data>."""
+    def _apply(self: Self, strepr: str) -> Self:
+        """Apply given function to the data.
+
+        Args:
+            <func> function to apply.
+            <strepr> is a string representation of the added preprocess.
+        """
+        func = eval(strepr)
         if self._process == Preprocessor.identity:
             self._process = func
+            self._repr = strepr
         else:
             previous_process = self._process
             self._process = lambda x: func(previous_process(x))
+            self._repr = self._str_compose(strepr)
         self.data = func(self._data)
         return self
+
+    def _str_compose(self: Self, strepr: str) -> str:
+        """Compose the new str representation with the old one.
+        Args:
+            The new added process as a string.
+        Returns:
+            The composition as a string.
+        """
+        if ':' in strepr:
+            (prototype, body) = strepr.split(':')
+            (prefix, suffix) = body.split('x')
+            return prototype + prefix + f"({self._repr})(x)" + suffix
+        else:
+            return f"lambda x: {strepr}(({self._repr})(x))"
 
     @staticmethod
     def adding_bias(x: ndarray) -> ndarray:

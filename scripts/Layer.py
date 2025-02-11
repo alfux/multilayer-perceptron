@@ -20,6 +20,7 @@ class Layer:
     def __init__(self: Self, neurons: list[Neuron], weights: ndarray) -> None:
         """Creates the layer based on neurons list and weights matrix.
 
+        Arguments can be provided as strings, to bet passed to eval().
         Args:
             <neurons> is a Neuron objects list used as neurons in the layer.
             <weights> is a matrix with lines equal to the number of neurons and
@@ -35,8 +36,7 @@ class Layer:
                 self.wdiff = self._vect_wdiff
             case _:
                 if len(neurons) != len(weights):
-                    print(weights.shape)
-                    print(len(neurons))
+                    print(weights.shape, len(neurons), sep="\n")
                     raise ValueError("matrix' shape doesn't fit neuron list")
                 self._neurons: list[Neuron] = neurons
                 self.eval = self._eval
@@ -48,13 +48,19 @@ class Layer:
 
     def __repr__(self: Self) -> str:
         """String representation of the object."""
-        string = f"{self._matrix.shape}"
+        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
         if isinstance(self._neurons, list):
-            for neuron in self._neurons:
-                string += f"\n\t{neuron}"
+            neuron_list = ""
+            for neuron in set(self._neurons):
+                if len(neuron_list) != 0:
+                    neuron_list += " + "
+                n = len([x for x in self._neurons if x == neuron])
+                neuron_list += f"[{neuron}] * {n}"
         else:
-            string += f"\n\t{self._neurons}"
-        return string
+            neuron_list = f"[{self._neurons}]"
+        strepr = f"Layer({neuron_list}, np.{repr(self._matrix)})"
+        np.set_printoptions()
+        return strepr
 
     @property
     def W(self: Self) -> ndarray:
@@ -130,15 +136,17 @@ def main() -> int:
         av.add_argument("--debug", action="store_true", help="debug mode")
         av = av.parse_args()
         print("Layer presentation:\n")
-        funct = eval(input("\tNeuron's function: "))
-        deriv = eval(input("\tNeuron's derivative: "))
+        funct = input("\tNeuron's function: ")
+        deriv = input("\tNeuron's derivative: ")
         numbr = int(input("\tNumber of neurons: "))
         vectr = np.array(eval(input("\tInputs: ")))
-        matrix = np.random.rand(numbr, len(vectr))
+        matrix = np.random.rand(numbr, np.size(vectr))
         print(f"Matrix is\n\n{matrix}")
         layer = Layer([Neuron(funct, deriv)] * numbr, matrix)
-        print(f"\nlayer({vectr.T}) = \n\n{layer.eval(vectr)}\n")
-        print(f"\nlayer.deriv({vectr.T}) = \n\n{layer.wdiff(vectr)}\n")
+        print(f"\nlayer({vectr.T}) = \n\n{layer.eval(np.atleast_1d(vectr))}\n")
+        print(f"\nlayer.deriv({vectr.T}) = \n")
+        print(f"{layer.wdiff(np.atleast_1d(vectr))}\n")
+        print("Representation:", layer, sep="\n")
         return 0
     except Exception as err:
         if av.debug:
