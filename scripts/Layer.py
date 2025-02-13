@@ -58,7 +58,7 @@ class Layer:
                 neuron_list += f"[{neuron}] * {n}"
         else:
             neuron_list = f"[{self._neurons}]"
-        strepr = f"Layer({neuron_list}, np.{repr(self._matrix)})"
+        strepr = f"Layer({neuron_list},\nnp.{repr(self._matrix)})"
         np.set_printoptions()
         return strepr
 

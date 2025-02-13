@@ -1,5 +1,6 @@
 import argparse as arg
 import sys
+import traceback
 from typing import Self, Generator, Callable
 
 import matplotlib.pyplot as plt
@@ -31,6 +32,7 @@ class Visualizer:
         self._traits = list({x for x in self._data[0]})
         self._traits.sort()
         self._colors = list(mclr.TABLEAU_COLORS.values())[:len(self._traits)]
+        self._no_describe = param.get("no_describe", False)
         title = param["title"] if "title" in param else "Visualizer"
         self._fig = plt.figure(title, figsize=(16, 9))
         self._fig.set_facecolor("0.85")
@@ -56,6 +58,8 @@ class Visualizer:
     def _describe(self: Self) -> str:
         """Data description text."""
         text = ''
+        if self._no_describe:
+            return
         for trait in self._traits:
             selected = self._select(self._xaxis + 1, trait)
             stats = Statistics(DataFrame(selected)).stats
@@ -213,6 +217,8 @@ def main() -> None:
     """Visualizes csv dataset."""
     try:
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
+        parser.add_argument("--debug", action="store_true", help="debug mode")
+        parser.add_argument("--no-describe", action="store_true")
         parser.add_argument("data", help="csv dataset")
         parser.add_argument("drop", help="columns to drop, as an int index",
                             nargs="*", default=[])
@@ -220,16 +226,20 @@ def main() -> None:
                             default=1)
         parser.add_argument("-n", "--no-header", help="first line is data",
                             action="store_true")
-        if parser.parse_args().no_header:
-            data = pd.read_csv(parser.parse_args().data, header=None)
+        parser = parser.parse_args()
+        if parser.no_header:
+            data = pd.read_csv(parser.data, header=None)
         else:
-            data = pd.read_csv(parser.parse_args().data)
-        visualizer = Visualizer(data, trait=parser.parse_args().trait,
-                                drop=parser.parse_args().drop,
-                                title=parser.parse_args().data)
+            data = pd.read_csv(parser.data)
+        visualizer = Visualizer(data, trait=parser.trait,
+                                drop=parser.drop,
+                                title=parser.data,
+                                no_describe=parser.no_describe)
         visualizer.show()
     except Exception as err:
-        print(f"Error: {err.__class__.__name__}: {err}", file=sys.stderr)
+        if parser.debug:
+            print(traceback.format_exc())
+        print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
 
 
 if __name__ == "__main__":

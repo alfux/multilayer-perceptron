@@ -8,9 +8,7 @@ from numpy import ndarray
 import pandas as pd
 from pandas import DataFrame
 
-from Layer import Layer
-from MLP import MLP
-from Neuron import Neuron
+from MLP import MLP, Layer, Neuron
 from Preprocessor import Preprocessor
 
 
@@ -28,16 +26,18 @@ class Teacher:
             normal: list = [0, 1],
             mlp: MLP = None
     ) -> None:
-        """Creates an MLP Teacher.
+        """<b>Creates an MLP Teacher</b>.
 
-        Args:
-            <book> is a DataFrame containing the exercies and the lessons.
-            <target> is the column containing the target values.
-            <normal> is the normalization interval.
-            <mlp> is a MLP instance of a MultilayerPerceptron.
+        <b>Args:</b>
+            <b>book</b> is a DataFrame containing the datas and target.
+            <b>target</b> is the column containing the target values.
+            <b>normal</b> is the normalization interval.
+            <b>mlp</b> is a MLP instance of a MultilayerPerceptron.
+        <b>Returns:</b>
+            Nothing
         """
         self._prep = Preprocessor(book, target)
-        self._prep.normalize(normal).add_bias()
+        self._prep.pre_normalize(normal).post_normalize(normal).add_bias()
         self._data: ndarray = self._prep.data
         self._true: ndarray = self._prep.target
         self._mlp: MLP = mlp
@@ -68,18 +68,23 @@ class Teacher:
             self._mlp.update(self._true, self._data)
             loss = self._mlp.cost.eval(self._true, self._mlp.eval(self._data))
             print(f"loss = {loss}, LR = {self._mlp.learning_rate}")
-        self._mlp.preprocess = str(self._prep)
+        self._mlp.preprocess = self._prep.prestr
+        self._mlp.postprocess = self._prep.poststr
         return self
 
     def save(self: Self, path: str = "./default.mlp") -> Self:
         """Saves the mlp in a file."""
         with open(path, "wb") as file:
             file.write(str(self._mlp).encode())
+        print("MLP saved successfuly in " + path)
+        return self
 
     def load(self: Self, path: str) -> Self:
         """Loads an mlp into the teacher."""
         with open(path, "rb") as file:
             self._mlp = eval(file.read().decode())
+        print("MLP " + path + " loaded successfuly")
+        return self
 
     def basic_regressor(self: Self) -> MLP:
         """Generates a basic MLP regressor based on the given DataFrame."""
@@ -135,7 +140,8 @@ def main() -> int:
         df = df.drop(av.drops.split(';') if av.drops != '' else [], axis=1)
         teacher = Teacher(df, target=av.answer, normal=eval(av.n))
         teacher.mlp = teacher.basic_regressor()
-        teacher.teach(epoch=2).save("regression_conso.mlp")
+        teacher.teach(epoch=1).save("regression_conso.mlp")
+        teacher.load("regression_conso.mlp")
         return 0
     except Exception as err:
         if av.debug:

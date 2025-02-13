@@ -7,8 +7,7 @@ import numpy as np
 from numpy import ndarray
 import numpy.random as rng
 
-from Layer import Layer
-from Neuron import Neuron
+from Layer import Layer, Neuron
 
 
 class MLP:
@@ -43,7 +42,8 @@ class MLP:
         self._b2: float = kw.get("b2", 0.999)
         self._pb2: float = self._b2
         self._v: list = [np.zeros(layer.W.shape) for layer in layers]
-        self.preprocess: Callable = kw.get("preprocess", "None")
+        self.preprocess: Callable = kw.get("preprocess", "lambda x: x")
+        self.postprocess: Callable = kw.get("postprocess", "lambda x: x")
 
     def __len__(self: Self) -> int:
         """Returns the number of layers in the MLP."""
@@ -54,26 +54,35 @@ class MLP:
         string = ""
         for layer in self._layers:
             if len(string) == 0:
-                string += f"{layer}"
+                string += f"\n{layer}"
             else:
-                string += f", {layer}"
-        string = f"MLP([{string}], {self._cost}, learning_rate={self._lr}, "
-        string += f"b1={self._b1}, b2={self._b2}, preprocess="
-        string += f"\"{self._prep_str}\")"
+                string += f",\n{layer}"
+        string = f"MLP([{string}],\n{self._cost},\nlearning_rate={self._lr},\n"
+        string += f"b1={self._b1},\nb2={self._b2},\npreprocess="
+        string += f"\"{self._prep_str}\"\n)"
         return string
 
     @property
-    def preprocess(self: Self) -> Callable[[ndarray], ndarray]:
+    def preprocess(self: Self) -> Callable:
+        """Getter of the preprocessor function."""
         return self._preprocess
 
     @preprocess.setter
     def preprocess(self: Self, value: str) -> None:
+        """Setter of the preprocessor function as a string."""
         self._prep_str = value
         self._preprocess = eval(value)
-        if self._preprocess is not None:
-            self.eval = self._preprocessed_eval
-        else:
-            self.eval = self._vanilla_eval
+
+    @property
+    def postprocess(self: Self) -> Callable:
+        """Getter of the postprocessor function."""
+        return self._postprocess
+
+    @postprocess.setter
+    def postprocess(self: Self, value: str) -> None:
+        """Setter of the postprocessor function as a string."""
+        self._post_str = value
+        self._postprocess = eval(value)
 
     @property
     def cost(self: Self) -> Neuron:
@@ -100,18 +109,10 @@ class MLP:
         Returns:
             The output of the last layer.
         """
-        pass
-
-    def save(self: Self, path: str) -> None:
-        """Saves the current state of the MLP into a file.
-
-        Args:
-            <path> is the location and name of the save file.
-        Returns:
-            None
-        """
-        # Unimplemented yet.
-        pass
+        x = self._preprocess(x)
+        for layer in self._layers:
+            x = layer.eval(x)
+        return self._postprocess(x)
 
     def update(self: Self, truth: ndarray, data: ndarray) -> None:
         """Updates the model by one pass of stochastic gradient descent.
@@ -155,10 +156,9 @@ class MLP:
         """
         self._m[i] = self._b1 * self._m[i] + (1 - self._b1) * gradient
         self._v[i] = self._b2 * self._v[i] + (1 - self._b2) * gradient ** 2
-        self._layers[i].W -= (
-            self._lr * (self._m[i] / (1 - self._pb1))
-            / (np.sqrt(self._v[i] / (1 - self._pb2)) + 1e-15)
-        )
+        m = self._m[i] / (1 - self._pb1)
+        v = np.sqrt(self._v[i] / (1 - self._pb2)) + 1e-15
+        self._layers[i].W -= self._lr * m / v
 
     def _forward_pass(self: Self, x: ndarray) -> Generator:
         """Generates an array with inputs of each layer (cost included)."""
@@ -166,29 +166,6 @@ class MLP:
             yield x
             x = layer.eval(x)
         yield x
-
-    def _preprocessed_eval(self: Self, x: ndarray) -> ndarray:
-        """Computes the network's output
-
-        Args:
-            <x> is supposed to be a (m, n) matrix where m is the number of
-            entries of the input layer plus one.
-        """
-        x = self._preprocess(x)
-        for layer in self._layers:
-            x = layer.eval(x)
-        return x
-
-    def _vanilla_eval(self: Self, x: ndarray) -> ndarray:
-        """Computes the network's output
-
-        Args:
-            <x> is supposed to be a (m, n) matrix where m is the number of
-            entries of the input layer plus one.
-        """
-        for layer in self._layers:
-            x = layer.eval(x)
-        return x
 
 
 def main() -> int:

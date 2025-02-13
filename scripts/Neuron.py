@@ -56,13 +56,23 @@ class Neuron:
 
     @staticmethod
     def ReLU(x: ndarray) -> ndarray:
-        """Computes the value of Rectified Linear Unit function in <x>."""
-        return (x > 0).astype(float) * x
+        """Computes the value of Rectified Linear Unit function in x."""
+        return np.where(x > 0, x, 0)
 
     @staticmethod
     def dReLU(x: ndarray) -> ndarray:
         """Computes the differential of ReLU in <x>."""
-        return (x > 0).astype(float)
+        return np.where(x > 0, 1, 0)
+
+    @staticmethod
+    def LReLU(x: ndarray, a: float = 1e-2) -> ndarray:
+        """Computes the value of Leaky Rectified Linear Unit function in x."""
+        return np.where(x > 0, x, a * x)
+
+    @staticmethod
+    def dLReLU(x: ndarray, a: float = 1e-2) -> ndarray:
+        """Computes the differential of LReLU in x."""
+        return np.where(x > 0, 1, a)
 
     @staticmethod
     def sigmoid(x: float) -> float:
@@ -118,10 +128,7 @@ class Neuron:
         """Derivative of the Mean Squared Error function."""
         y = np.atleast_2d(y)
         x = np.atleast_2d(x)
-        ret = -2 * (y - x) / x.shape[0]
-        print(x, y, sep="\n\n---\n\n")
-        print(ret, end="\n\n")
-        return ret
+        return -2 * (y - x) / x.shape[0]
 
     @staticmethod
     def bias(x: ndarray) -> ndarray:
