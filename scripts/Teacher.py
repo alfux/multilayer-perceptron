@@ -68,22 +68,17 @@ class Teacher:
             self._mlp.update(self._true, self._data)
             loss = self._mlp.cost.eval(self._true, self._mlp.eval(self._data))
             print(f"loss = {loss}, LR = {self._mlp.learning_rate}")
+            if loss < 1e-3:
+                break
         self._mlp.preprocess = self._prep.prestr
         self._mlp.postprocess = self._prep.poststr
         return self
 
-    def save(self: Self, path: str = "./default.mlp") -> Self:
-        """Saves the mlp in a file."""
-        with open(path, "wb") as file:
-            file.write(str(self._mlp).encode())
-        print("MLP saved successfuly in " + path)
-        return self
-
-    def load(self: Self, path: str) -> Self:
-        """Loads an mlp into the teacher."""
-        with open(path, "rb") as file:
-            self._mlp = eval(file.read().decode())
-        print("MLP " + path + " loaded successfuly")
+    def save(self: "Teacher", path: str = "default.mlp") -> "Teacher":
+        """Saves the current mlp into the file in <b>path</b>."""
+        self._mlp.preprocess = self._prep.prestr
+        self._mlp.postprocess = self._prep.poststr
+        self._mlp.save(path)
         return self
 
     def basic_regressor(self: Self) -> MLP:
@@ -141,7 +136,7 @@ def main() -> int:
         teacher = Teacher(df, target=av.answer, normal=eval(av.n))
         teacher.mlp = teacher.basic_regressor()
         teacher.teach(epoch=1).save("regression_conso.mlp")
-        teacher.load("regression_conso.mlp")
+        teacher.mlp = MLP.load("regression_conso.mlp")
         return 0
     except Exception as err:
         if av.debug:

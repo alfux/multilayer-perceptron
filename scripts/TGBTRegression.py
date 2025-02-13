@@ -14,6 +14,7 @@ def main() -> int:
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")
+        av.add_argument("--epoch", type=int, help="number of epoch", default=1)
         av.add_argument("file", help="file with timestamp and IEA")
         av = av.parse_args()
         data: DataFrame = pd.read_csv(av.file).loc[:, ["IEA", "Temps (sec)"]]
@@ -31,7 +32,7 @@ def main() -> int:
             ], cost,
             learning_rate=1e-3
         )
-        reg.teach(100).save()
+        reg.teach(av.epoch).save()
         return 0
     except Exception as err:
         if av.debug:

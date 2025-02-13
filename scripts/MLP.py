@@ -1,13 +1,14 @@
 import argparse as arg
 import sys
 import traceback
-from typing import Self, Generator, Callable
+from typing import Generator, Callable
 
 import numpy as np
 from numpy import ndarray
 import numpy.random as rng
 
 from Layer import Layer, Neuron
+from Preprocessor import Preprocessor
 
 
 class MLP:
@@ -18,7 +19,7 @@ class MLP:
     in order to reduce time and operations complexities.
     """
 
-    def __init__(self: Self, layers: list, cost: Neuron, **kw: dict) -> None:
+    def __init__(self: "MLP", layers: list, cost: Neuron, **kw: dict) -> None:
         """Creates a single or multilayer perceptron.
 
         Args:
@@ -32,6 +33,8 @@ class MLP:
             lead complete to divergence.
             <preprocess> is the preprocessing function used over the training
             dataset. Must be an evaluable string.
+            <postprocess> is the postprocessing function used over the training
+            output. Must be an evaluable string.
         """
         self._layers: list[Layer] = layers
         self._cost: Neuron = cost
@@ -45,11 +48,11 @@ class MLP:
         self.preprocess: Callable = kw.get("preprocess", "lambda x: x")
         self.postprocess: Callable = kw.get("postprocess", "lambda x: x")
 
-    def __len__(self: Self) -> int:
+    def __len__(self: "MLP") -> int:
         """Returns the number of layers in the MLP."""
         return len(self._layers)
 
-    def __repr__(self: Self) -> str:
+    def __repr__(self: "MLP") -> str:
         """String representation of the object."""
         string = ""
         for layer in self._layers:
@@ -59,47 +62,60 @@ class MLP:
                 string += f",\n{layer}"
         string = f"MLP([{string}],\n{self._cost},\nlearning_rate={self._lr},\n"
         string += f"b1={self._b1},\nb2={self._b2},\npreprocess="
-        string += f"\"{self._prep_str}\"\n)"
+        string += f"\"{self._prep_str}\",\npostprocess=\"{self._post_str}\"\n)"
         return string
 
     @property
-    def preprocess(self: Self) -> Callable:
+    def preprocess(self: "MLP") -> Callable:
         """Getter of the preprocessor function."""
         return self._preprocess
 
     @preprocess.setter
-    def preprocess(self: Self, value: str) -> None:
+    def preprocess(self: "MLP", value: str) -> None:
         """Setter of the preprocessor function as a string."""
         self._prep_str = value
         self._preprocess = eval(value)
 
     @property
-    def postprocess(self: Self) -> Callable:
+    def postprocess(self: "MLP") -> Callable:
         """Getter of the postprocessor function."""
         return self._postprocess
 
     @postprocess.setter
-    def postprocess(self: Self, value: str) -> None:
+    def postprocess(self: "MLP", value: str) -> None:
         """Setter of the postprocessor function as a string."""
         self._post_str = value
         self._postprocess = eval(value)
 
     @property
-    def cost(self: Self) -> Neuron:
+    def processor(self: "MLP") -> tuple[Callable]:
+        """Getter for the pre and post processors."""
+        return (self._preprocess, self._postprocess)
+
+    @processor.setter
+    def processor(self: "MLP", value: Preprocessor) -> None:
+        """Setter for the pre and post processors."""
+        self._prep_str = value.prestr
+        self._preprocess = eval(value.prestr)
+        self._post_str = value.poststr
+        self._postprocess = eval(value.poststr)
+
+    @property
+    def cost(self: "MLP") -> Neuron:
         """Getter for the cost function."""
         return self._cost
 
     @property
-    def learning_rate(self: Self) -> float:
+    def learning_rate(self: "MLP") -> float:
         """Getter for the learning_rate."""
         return self._lr
 
     @learning_rate.setter
-    def learning_rate(self: Self, value: float) -> None:
+    def learning_rate(self: "MLP", value: float) -> None:
         """Setter for the learning_rate."""
         self._lr = value
 
-    def eval(self: Self, x: ndarray) -> ndarray:
+    def eval(self: "MLP", x: ndarray) -> ndarray:
         """Evaluates the MLP's output.
 
         This function is dynamically allocated depending on the presence of a
@@ -114,19 +130,29 @@ class MLP:
             x = layer.eval(x)
         return self._postprocess(x)
 
-    def update(self: Self, truth: ndarray, data: ndarray) -> None:
+    def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
         """Updates the model by one pass of stochastic gradient descent.
 
         The update is based on the model's current cost function.
         Args:
             <data> is the matrix containing, by row, inputs to train over.
         """
+        indices = np.random.permutation(data.shape[0])
+        truth = truth[indices]
+        data = data[indices]
         for (y, x) in zip(truth, data):
             self._backpropagate(y, np.fromiter(self._forward_pass(x), ndarray))
             self._pb1 *= self._b1
             self._pb2 *= self._b2
 
-    def _backpropagate(self: Self, y: ndarray, input: ndarray) -> None:
+    def save(self: "MLP", path: str = "./default.mlp") -> "MLP":
+        """Saves the mlp in a file."""
+        with open(path, "wb") as file:
+            file.write(str(self).encode())
+        print("MLP saved successfuly in " + path)
+        return self
+
+    def _backpropagate(self: "MLP", y: ndarray, input: ndarray) -> None:
         """Updates matrices with backpropagation.
 
         Args:
@@ -144,7 +170,7 @@ class MLP:
             dk = self._layers[i].wdiff(input[i]) @ self._layers[i + 1].W.T @ dk
             self._update_layer(i, np.outer(dk, input[i]))
 
-    def _update_layer(self: Self, i: int, gradient: ndarray) -> None:
+    def _update_layer(self: "MLP", i: int, gradient: ndarray) -> None:
         """Updates layer with ADAM momentum.
 
         Args:
@@ -160,12 +186,20 @@ class MLP:
         v = np.sqrt(self._v[i] / (1 - self._pb2)) + 1e-15
         self._layers[i].W -= self._lr * m / v
 
-    def _forward_pass(self: Self, x: ndarray) -> Generator:
+    def _forward_pass(self: "MLP", x: ndarray) -> Generator:
         """Generates an array with inputs of each layer (cost included)."""
         for layer in self._layers:
             yield x
             x = layer.eval(x)
         yield x
+
+    @staticmethod
+    def load(path: str) -> "MLP":
+        """Loads an mlp into the teacher."""
+        with open(path, "rb") as file:
+            mlp = eval(file.read().decode())
+        print("MLP " + path + " loaded successfuly")
+        return mlp
 
 
 def main() -> int:
