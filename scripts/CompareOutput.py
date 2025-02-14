@@ -21,6 +21,7 @@ def main() -> int:
         plt.plot(baseline.iloc[:, 0], baseline.iloc[:, 1])
         prediction = mlp.eval(np.atleast_2d(baseline.iloc[:, 0].to_numpy()).T)
         plt.plot(baseline.iloc[:, 0], prediction)
+        plt.legend(["TGBT", "MLP"])
         plt.show()
         return 0
     except Exception as err:
