@@ -9,7 +9,7 @@ from pandas import DataFrame
 from Statistics import Statistics
 
 
-class Preprocessor:
+class Processor:
     """Create an instance of this class to preprocess a dataset."""
 
     def __init__(self: Self, dataset: DataFrame, target: str | int) -> None:
@@ -28,9 +28,9 @@ class Preprocessor:
         constant = (self._data == self._data.iloc[0]).all(axis=0)
         self._data = self._data.loc[:, ~constant]
         self._stat: DataFrame = Statistics(self._data).stats
-        self._preprocess: Callable = Preprocessor.identity
+        self._preprocess: Callable = Processor.identity
         self._prestr = "lambda x: x"
-        self._postprocess: Callable = Preprocessor.identity
+        self._postprocess: Callable = Processor.identity
         self._poststr = "lamnda x: x"
 
     @property
@@ -161,7 +161,7 @@ class Preprocessor:
             <strepr> is a string representation of the added preprocess.
         """
         func = eval(strepr)
-        if self._preprocess == Preprocessor.identity:
+        if self._preprocess == Processor.identity:
             self._preprocess = func
             self._prestr = strepr
         else:
@@ -178,7 +178,7 @@ class Preprocessor:
             <i>strepr</i> is the string to be eval() as the function.
             <i>strrev</i> is the string to be eval() as the inverse."""
         func = eval(strepr)
-        if self._postprocess == Preprocessor.identity:
+        if self._postprocess == Processor.identity:
             self._postprocess = func
             self._poststr = strrev
         else:
@@ -219,7 +219,7 @@ def main() -> int:
         book = DataFrame([['a', 1, 0, 0.8],
                           ['b', 4, 375, 7],
                           ['a', 9, -3, 12]])
-        processor = Preprocessor(book)
+        processor = Processor(book)
         print("Data", book, sep="\n\n", end="\n\n")
         processor.pre_standardize()
         print("Standaridzed", processor.data, sep="\n\n", end="\n\n")

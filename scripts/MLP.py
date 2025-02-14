@@ -8,7 +8,7 @@ from numpy import ndarray
 import numpy.random as rng
 
 from Layer import Layer, Neuron
-from Preprocessor import Preprocessor
+from Processor import Processor
 
 
 class MLP:
@@ -93,7 +93,7 @@ class MLP:
         return (self._preprocess, self._postprocess)
 
     @processor.setter
-    def processor(self: "MLP", value: Preprocessor) -> None:
+    def processor(self: "MLP", value: Processor) -> None:
         """Setter for the pre and post processors."""
         self._prep_str = value.prestr
         self._preprocess = eval(value.prestr)

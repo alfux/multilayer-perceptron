@@ -9,7 +9,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from MLP import MLP, Layer, Neuron
-from Preprocessor import Preprocessor
+from Processor import Processor
 
 
 class Teacher:
@@ -36,7 +36,7 @@ class Teacher:
         <b>Returns:</b>
             Nothing
         """
-        self._prep = Preprocessor(book, target)
+        self._prep = Processor(book, target)
         self._prep.pre_normalize(normal).post_normalize(normal).add_bias()
         self._data: ndarray = self._prep.data
         self._true: ndarray = self._prep.target
