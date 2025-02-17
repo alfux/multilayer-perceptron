@@ -46,10 +46,14 @@ class Visualizer:
     def _pre_process(self: Self, data: DataFrame, trait: int,
                      drop: list) -> DataFrame:
         """Renames dataframe's headers."""
-        traits = data[trait]
         head = {k: str(v) for (k, v) in zip(data.columns, data.columns)}
         data.rename(head, axis=1, inplace=True)
-        data.drop([trait, *drop], axis=1, inplace=True)
+        if trait is not None:
+            traits = data[trait]
+            data.drop([trait, *drop], axis=1, inplace=True)
+        else:
+            traits = DataFrame({"None": ['None'] * data.shape[0]})
+            data.drop([*drop], axis=1, inplace=True)
         data = pd.concat([traits, data.select_dtypes("number")], axis=1)
         head = {k: v for (k, v) in zip(data.columns, range(len(data.columns)))}
         self._remap = {v: k for (v, k) in zip(head.values(), head.keys())}
@@ -223,7 +227,7 @@ def main() -> None:
         parser.add_argument("drop", help="columns to drop, as an int index",
                             nargs="*", default=[])
         parser.add_argument("-t", "--trait", help="column of observed traits",
-                            default=1)
+                            default=None)
         parser.add_argument("-n", "--no-header", help="first line is data",
                             action="store_true")
         parser = parser.parse_args()
