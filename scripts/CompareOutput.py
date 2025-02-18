@@ -17,7 +17,7 @@ def main() -> int:
         av.add_argument("baseline", help="path to the baseline")
         av = av.parse_args()
         mlp: MLP = MLP.load(av.mlp)
-        baseline = pd.read_csv(av.baseline)
+        baseline = pd.read_csv(av.baseline).loc[:, ["Temps (sec)", "IEA"]]
         plt.plot(baseline.iloc[:, 0], baseline.iloc[:, 1])
         prediction = mlp.eval(np.atleast_2d(baseline.iloc[:, 0].to_numpy()).T)
         plt.plot(baseline.iloc[:, 0], prediction)

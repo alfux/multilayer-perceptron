@@ -5,3 +5,5 @@ venv
 *.jpg
 *.png
 *.pptx
+*.json
+*.mlp
