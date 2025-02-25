@@ -31,6 +31,7 @@ def plot_training_set(path: str, ax: Axes) -> None:
     for base in os.listdir(path):
         base = path + "/" + base
         base = pd.read_csv(base).loc[:, ["IEA", "Temps (sec)", "FaitJour"]]
+        base = base.dropna(how="any")
         (x, y, z) = (base["Temps (sec)"], base["FaitJour"], base["IEA"])
         (x, y, z) = (x.to_numpy(), y.to_numpy(), z.to_numpy())
         grid = int(np.ceil(len(x) / GRID))
