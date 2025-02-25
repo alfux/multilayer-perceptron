@@ -7,3 +7,5 @@ venv
 *.pptx
 *.json
 *.mlp
+data
+other

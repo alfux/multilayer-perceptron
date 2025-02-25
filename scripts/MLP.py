@@ -140,7 +140,8 @@ class MLP:
         indices = np.random.permutation(data.shape[0])
         truth = truth[indices]
         data = data[indices]
-        for (y, x) in zip(truth, data):
+        for (i, (y, x)) in enumerate(zip(truth, data)):
+            print(f"\rPerforming iteration: {i}", end='')
             self._backpropagate(y, np.fromiter(self._forward_pass(x), ndarray))
             self._pb1 *= self._b1
             self._pb2 *= self._b2

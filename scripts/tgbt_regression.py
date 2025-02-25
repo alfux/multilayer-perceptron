@@ -15,20 +15,26 @@ def main() -> int:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")
         av.add_argument("--epoch", type=int, help="number of epoch", default=1)
+        av.add_argument("--sample", type=float, help="sample frac", default=1)
+        av.add_argument("--save", default="default.mlp", help="saving path")
         av.add_argument("file", help="file with timestamp and IEA")
         av = av.parse_args()
-        data: DataFrame = pd.read_csv(av.file).loc[:, ["IEA", "Temps (sec)"]]
+        data: DataFrame = pd.read_csv(av.file).sample(frac=av.sample)
+        data = data.loc[:, ["IEA", "Temps (sec)", "FaitJour"]]
         lrelu = Neuron("Neuron.LReLU", "Neuron.dLReLU")
         bias = Neuron("Neuron.bias", "Neuron.dbias")
+        (L1, L2, L3, L4) = (16, 8, 4, 2)
         mlp = MLP([
-            Layer([lrelu] * 64 + [bias], np.random.randn(65, 2)),
-            Layer([lrelu] * 32 + [bias], np.random.randn(33, 65)),
-            Layer([lrelu] * 16 + [bias], np.random.randn(17, 33)),
-            Layer([lrelu] * 8 + [bias], np.random.randn(9, 17)),
-            Layer([lrelu], np.random.randn(1, 9)),
+            Layer([lrelu] * L1 + [bias], np.random.randn(L1 + 1, 3)),
+            Layer([lrelu] * L2 + [bias], np.random.randn(L2 + 1, L1 + 1)),
+            Layer([lrelu] * L3 + [bias], np.random.randn(L3 + 1, L2 + 1)),
+            Layer([lrelu] * L4 + [bias], np.random.randn(L4 + 1, L3 + 1)),
+            Layer([lrelu], np.random.randn(1, L4 + 1)),
             ], Neuron("Neuron.MSE", "Neuron.dMSE")
         )
-        Teacher(data, "IEA", normal=[-1, 1], mlp=mlp).teach(av.epoch).save()
+        Teacher(
+            data, "IEA", normal=[-1, 1], mlp=mlp
+        ).teach(av.epoch).save(av.save)
         return 0
     except Exception as err:
         if av.debug:

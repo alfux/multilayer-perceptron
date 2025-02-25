@@ -151,7 +151,7 @@ class Processor:
 
     def add_bias(self: Self) -> Self:
         """Adds a bias component at the end of the vector."""
-        return self._pre_apply("Preprocessor.adding_bias")
+        return self._pre_apply("Processor.adding_bias")
 
     def _pre_apply(self: Self, strepr: str) -> Self:
         """Apply given function to the data and stores it.
@@ -214,7 +214,7 @@ class Processor:
 
 
 def main() -> int:
-    """Print a test of the Preprocessor functionalities"""
+    """Print a test of the Processor functionalities"""
     try:
         book = DataFrame([['a', 1, 0, 0.8],
                           ['b', 4, 375, 7],

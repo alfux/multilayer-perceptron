@@ -62,13 +62,15 @@ class Teacher:
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
         loss = self._mlp.cost.eval(self._true, self._mlp.eval(self._data))
-        print(f"loss = {loss}, LR = {self._mlp.learning_rate}")
+        print(f"Initial loss = {loss}, LR = {self._mlp.learning_rate}\n")
         for i in range(epoch):
-            print(f"Epoch {i}")
+            print(f"\nEpoch {i}:")
             self._mlp.update(self._true, self._data)
-            loss = self._mlp.cost.eval(self._true, self._mlp.eval(self._data))
-            print(f"loss = {loss}, LR = {self._mlp.learning_rate}")
-            if loss < 1e-3:
+            output = self._mlp.eval(self._data)
+            loss = self._mlp.cost.eval(self._true, output)
+            grad = self._mlp.cost.diff(self._true, output)
+            print(f"\nLoss = {loss} - Grad = {grad}")
+            if grad < 1e-3:
                 break
         self._mlp.preprocess = self._prep.prestr
         self._mlp.postprocess = self._prep.poststr
