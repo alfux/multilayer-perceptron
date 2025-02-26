@@ -26,13 +26,12 @@ class Visualizer:
             self._data = data
             self._remap = param["remap"]
         else:
-            trait = param["trait"] if "trait" in param else '1'
-            drop = param["drop"] if "drop" in param else ['0']
+            trait = param.get("trait", None)
+            drop = param.get("drop", ['0'])
             self._data = self._pre_process(data, trait, drop)
         self._traits = list({x for x in self._data[0]})
         self._traits.sort()
         self._colors = list(mclr.TABLEAU_COLORS.values())[:len(self._traits)]
-        self._no_describe = param.get("no_describe", False)
         title = param["title"] if "title" in param else "Visualizer"
         self._fig = plt.figure(title, figsize=(16, 9))
         self._fig.set_facecolor("0.85")
@@ -62,8 +61,6 @@ class Visualizer:
     def _describe(self: Self) -> str:
         """Data description text."""
         text = ''
-        if self._no_describe:
-            return
         for trait in self._traits:
             selected = self._select(self._xaxis + 1, trait)
             stats = Statistics(DataFrame(selected)).stats
@@ -220,28 +217,25 @@ class Visualizer:
 def main() -> None:
     """Visualizes csv dataset."""
     try:
-        parser = arg.ArgumentParser(description="Visualizes csv dataset")
-        parser.add_argument("--debug", action="store_true", help="debug mode")
-        parser.add_argument("--no-describe", action="store_true")
-        parser.add_argument("data", help="csv dataset")
-        parser.add_argument("drop", help="columns to drop, as an int index",
-                            nargs="*", default=[])
-        parser.add_argument("-t", "--trait", help="column of observed traits",
-                            default=None)
-        parser.add_argument("-n", "--no-header", help="first line is data",
-                            action="store_true")
-        parser = parser.parse_args()
-        if parser.no_header:
-            data = pd.read_csv(parser.data, header=None)
+        av = arg.ArgumentParser(description=main.__doc__)
+        av.add_argument("--debug", action="store_true", help="debug mode")
+        av.add_argument("--sample", type=float, default=1, help="sample size")
+        av.add_argument("data", help="csv dataset")
+        message = "columns to drop, as an int index"
+        av.add_argument("drop", help=message, nargs="*", default=[])
+        message = "column of observed traits"
+        av.add_argument("-t", "--trait", help=message, default=None)
+        message = "first line is data"
+        av.add_argument("-n", "--no-header", help=message, action="store_true")
+        av = av.parse_args()
+        if av.no_header:
+            data = pd.read_csv(av.data, header=None).sample(frac=av.sample)
         else:
-            data = pd.read_csv(parser.data)
-        visualizer = Visualizer(data, trait=parser.trait,
-                                drop=parser.drop,
-                                title=parser.data,
-                                no_describe=parser.no_describe)
-        visualizer.show()
+            data = pd.read_csv(av.data).sample(frac=av.sample)
+        data = data.reset_index(drop=True)
+        Visualizer(data, trait=av.trait, drop=av.drop, title=av.data).show()
     except Exception as err:
-        if parser.debug:
+        if av.debug:
             print(traceback.format_exc())
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
 

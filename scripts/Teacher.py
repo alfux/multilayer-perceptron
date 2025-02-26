@@ -68,7 +68,7 @@ class Teacher:
             self._mlp.update(self._true, self._data)
             output = self._mlp.eval(self._data)
             loss = self._mlp.cost.eval(self._true, output)
-            grad = self._mlp.cost.diff(self._true, output)
+            grad = np.linalg.norm(self._mlp.cost.diff(self._true, output))
             print(f"\nLoss = {loss} - Grad = {grad}")
             if grad < 1e-3:
                 break

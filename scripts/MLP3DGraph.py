@@ -19,7 +19,7 @@ class MLP3DGraph:
 
     def __init__(
             self: Self, mlp: str, training: str, frac: float = 0.01,
-            title: str = "Learned curve against real curves", grid: int = 100,
+            title: str = "Graph", grid: int = 100,
             figsize: tuple = (15, 9), alpha: float = 0.75
     ) -> None:
         """Initializes the 3D Graph projection.
@@ -44,12 +44,16 @@ class MLP3DGraph:
         self._y: ndarray = self._set["FaitJour"].to_numpy()
         self._z: ndarray = self._set["IEA"].to_numpy()
         self._fig.suptitle(title)
+        self._ax.set_xlabel("Temps (sec)")
+        self._ax.set_ylabel("FaitJour")
+        self._ax.set_zlabel("Index Energie Active")
 
-    def plot_mlp(self: Self) -> None:
+    def plot_mlp(self: Self) -> Self:
         """Plots the mlp's output.
 
         <b>Returns:</b>
-            None"""
+            The current instance
+        """
         x = np.linspace(np.min(self._x), np.max(self._x), self._grid)
         y = np.linspace(np.min(self._y), np.max(self._y), self._grid)
         (x, y) = np.meshgrid(x, y)
@@ -58,12 +62,18 @@ class MLP3DGraph:
             input_layer = np.concat([np.atleast_2d(x[i]), np.atleast_2d(y[i])])
             z[i] = self._mlp.eval(input_layer.T).T
         self._ax.plot_surface(x, y, z, cmap="viridis", alpha=self._alpha)
+        return self
 
-    def plot_training_set(self: Self) -> None:
-        """Plots the training set values."""
+    def plot_training_set(self: Self) -> Self:
+        """Plots the training set values.
+
+        <b>Returns:</b>
+            The current instance
+        """
         grid = int(np.ceil(len(self._x) / self._grid))
         (x, y, z) = (self._x[::grid], self._y[::grid], self._z[::grid])
         self._ax.scatter(x, y, z, c=z, cmap="viridis", marker="o", alpha=1)
+        return self
 
 
 def main() -> int:
@@ -71,14 +81,19 @@ def main() -> int:
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")
-        av.add_argument("--sample", default=0.01, help="sample ratio")
-        av.add_argument("--alpha", default=1.0, help="alpha value of mlp")
+        message = "ratio of the sample compared to the full set of data"
+        av.add_argument("--sample", default=0.01, type=float, help=message)
+        message = "alpha value of the mlp surface (transparency)"
+        av.add_argument("--alpha", default=1.0, type=float, help=message)
+        message = "axes subdivisions to determine surface mesh subdivisions"
+        av.add_argument("--grid", default=100, type=int, help=message)
         av.add_argument("mlp", help="path to mlp file")
         av.add_argument("training", help="path to the training file")
         av = av.parse_args()
-        graph = MLP3DGraph(av.mlp, av.training, av.sample)
-        graph.plot_mlp()
-        graph.plot_training_set()
+        MLP3DGraph(
+            av.mlp, av.training, av.sample, title="Consommation étalon",
+            alpha=av.alpha, grid=av.grid
+        ).plot_mlp().plot_training_set()
         plt.show()
         return 0
     except Exception as err:
