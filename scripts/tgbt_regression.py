@@ -1,12 +1,25 @@
 import argparse as arg
+from datetime import datetime
 import sys
 import traceback
+from typing import Generator
 
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
 from Teacher import Teacher, MLP, Layer, Neuron
+
+
+def gen_layers(layers: list[int], neuron: Neuron) -> Generator:
+    """Generates an MLP based on hyperparameters"""
+    bias = [Neuron("Neuron.bias", "Neuron.dbias")]
+    neuron = [neuron]
+    for i in range(1, len(layers)):
+        n = layers[i - 1] + 1
+        matrix = np.random.randn(layers[i] + 1, n) * np.sqrt(2 / n)
+        yield Layer(neuron * layers[i] + bias, matrix)
+    yield Layer(neuron, np.random.randn(1, layers[i] + 1))
 
 
 def main() -> int:
@@ -22,19 +35,11 @@ def main() -> int:
         data: DataFrame = pd.read_csv(av.file).sample(frac=av.sample)
         data = data.loc[:, ["IEA", "Temps (sec)", "FaitJour"]]
         lrelu = Neuron("Neuron.LReLU", "Neuron.dLReLU")
-        bias = Neuron("Neuron.bias", "Neuron.dbias")
-        (L1, L2, L3, L4) = (16, 8, 4, 2)
-        mlp = MLP([
-            Layer([lrelu] * L1 + [bias], np.random.randn(L1 + 1, 3)),
-            Layer([lrelu] * L2 + [bias], np.random.randn(L2 + 1, L1 + 1)),
-            Layer([lrelu] * L3 + [bias], np.random.randn(L3 + 1, L2 + 1)),
-            Layer([lrelu] * L4 + [bias], np.random.randn(L4 + 1, L3 + 1)),
-            Layer([lrelu], np.random.randn(1, L4 + 1)),
-            ], Neuron("Neuron.MSE", "Neuron.dMSE")
-        )
-        Teacher(
-            data, "IEA", normal=[-1, 1], mlp=mlp
-        ).teach(av.epoch).save(av.save)
+        cost = Neuron("Neuron.MAE", "Neuron.dMAE")
+        mlp = MLP(list(gen_layers([2, 16, 8, 4, 2], lrelu)), cost)
+        teacher = Teacher(data, "IEA", normal=[-1, 1], mlp=mlp)
+        teacher.teach(av.epoch, time=True)
+        teacher.save(datetime.now().date().isoformat() + av.save)
         return 0
     except Exception as err:
         if av.debug:

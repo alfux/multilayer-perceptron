@@ -1,4 +1,5 @@
 import argparse as arg
+from datetime import datetime
 import sys
 import traceback
 from typing import Self
@@ -52,28 +53,34 @@ class Teacher:
         """Setter for the mlp model."""
         self._mlp = value
 
-    def teach(self: Self, epoch: int) -> Self:
+    # Review stop break condition as the computed gradient isn't accurate.
+    def teach(
+            self: Self, epoch: int, time: bool = False, threshold: float = 1e-3
+    ) -> Self:
         """Teaches the lesson to the internal MLP.
 
-        Args:
-            <epoch> is the number of epoch to realise with the training. When
-            given <epoch> is 0 or less, precision is used to end the training.
+        <b>Args:</b>
+            <b>epoch</b> is the number of epoch to realise with the training.
+            <b>time</b> is a boolean to print the training time
+            <b>threshold</b> breaks the training between epochs if reached
+        <b>Returns:</b>
+            The current instance
         """
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
-        loss = self._mlp.cost.eval(self._true, self._mlp.eval(self._data))
-        print(f"Initial loss = {loss}, LR = {self._mlp.learning_rate}\n")
+        t = datetime.now()
         for i in range(epoch):
             print(f"\nEpoch {i}:")
             self._mlp.update(self._true, self._data)
             output = self._mlp.eval(self._data)
-            loss = self._mlp.cost.eval(self._true, output)
             grad = np.linalg.norm(self._mlp.cost.diff(self._true, output))
-            print(f"\nLoss = {loss} - Grad = {grad}")
-            if grad < 1e-3:
+            print(f"\nGrad = {grad}")
+            if grad < threshold:
                 break
         self._mlp.preprocess = self._prep.prestr
         self._mlp.postprocess = self._prep.poststr
+        if time:
+            print("Training time:", datetime.now() - t)
         return self
 
     def save(self: "Teacher", path: str = "default.mlp") -> "Teacher":
