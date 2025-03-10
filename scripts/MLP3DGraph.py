@@ -90,10 +90,12 @@ def main() -> int:
         av.add_argument("mlp", help="path to mlp file")
         av.add_argument("training", help="path to the training file")
         av = av.parse_args()
-        MLP3DGraph(
+        graph = MLP3DGraph(
             av.mlp, av.training, av.sample, title="Consommation étalon",
             alpha=av.alpha, grid=av.grid
-        ).plot_mlp().plot_training_set()
+        )
+        # graph.plot_training_set()
+        graph.plot_mlp()
         plt.show()
         return 0
     except Exception as err:

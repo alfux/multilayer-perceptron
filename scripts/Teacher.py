@@ -40,7 +40,7 @@ class Teacher:
         self._prep = Processor(book, target)
         self._prep.pre_normalize(normal).post_normalize(normal).add_bias()
         self._data: ndarray = self._prep.data
-        self._true: ndarray = self._prep.target
+        self._truth: ndarray = self._prep.target
         self._mlp: MLP = mlp
 
     @property
@@ -55,7 +55,7 @@ class Teacher:
 
     # Review stop break condition as the computed gradient isn't accurate.
     def teach(
-            self: Self, epoch: int, time: bool = False, threshold: float = 1e-3
+            self: Self, epoch: int, time: bool = False, frac: float = 1
     ) -> Self:
         """Teaches the lesson to the internal MLP.
 
@@ -71,23 +71,24 @@ class Teacher:
         t = datetime.now()
         for i in range(epoch):
             print(f"\nEpoch {i}:")
-            self._mlp.update(self._true, self._data)
-            output = self._mlp.eval(self._data)
-            grad = np.linalg.norm(self._mlp.cost.diff(self._true, output))
+            (truth, data) = self._sample(frac)
+            self._mlp.update(truth, data)
+            output = self._mlp.eval(data)
+            print(f"\nLoss = {self._mlp.cost.eval(truth, output)}")
+            grad = np.linalg.norm(self._mlp.cost.diff(truth, output))
             print(f"\nGrad = {grad}")
-            if grad < threshold:
-                break
-        self._mlp.preprocess = self._prep.prestr
-        self._mlp.postprocess = self._prep.poststr
         if time:
             print("Training time:", datetime.now() - t)
         return self
 
-    def save(self: "Teacher", path: str = "default.mlp") -> "Teacher":
-        """Saves the current mlp into the file in <b>path</b>."""
+    def save(
+            self: "Teacher", path: str = "default.mlp", date: datetime = None
+    ) -> "Teacher":
+        """Saves the current mlp into the file in path."""
         self._mlp.preprocess = self._prep.prestr
         self._mlp.postprocess = self._prep.poststr
-        self._mlp.save(path)
+        sep = path[::-1].split('.', maxsplit=1)
+        self._mlp.save(sep[1][::-1] + '_' + date + '.' + sep[0][::-1])
         return self
 
     def basic_regressor(self: Self) -> MLP:
@@ -124,6 +125,18 @@ class Teacher:
         layers += [Layer([activation], matrix)]
         cost = Neuron("Neuron.CELF", "Neuron.dCELF")
         return MLP(layers, cost, learning_rate=1e-3)
+
+    def _sample(self: Self, frac: float) -> tuple[ndarray, ndarray]:
+        """Selects a random sample of the data.
+
+        Args:
+            frac is a proportion of the total available datas.
+        Returns:
+            A tuple containing the learned truth array and the data array.
+        """
+        size = np.int64(np.round(np.clip(frac, 0, 1) * self._data.shape[0]))
+        idx = np.random.choice(self._data.shape[0], size=size, replace=False)
+        return (self._truth[idx], self._data[idx])
 
 
 def main() -> int:

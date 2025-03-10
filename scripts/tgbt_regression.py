@@ -32,14 +32,14 @@ def main() -> int:
         av.add_argument("--save", default="default.mlp", help="saving path")
         av.add_argument("file", help="file with timestamp and IEA")
         av = av.parse_args()
-        data: DataFrame = pd.read_csv(av.file).sample(frac=av.sample)
+        data: DataFrame = pd.read_csv(av.file)
         data = data.loc[:, ["IEA", "Temps (sec)", "FaitJour"]]
         lrelu = Neuron("Neuron.LReLU", "Neuron.dLReLU")
-        cost = Neuron("Neuron.MAE", "Neuron.dMAE")
-        mlp = MLP(list(gen_layers([2, 16, 8, 4, 2], lrelu)), cost)
+        cost = Neuron("Neuron.MSE", "Neuron.dMSE")
+        mlp = MLP(list(gen_layers([2, 32, 16, 8, 4, 2], lrelu)), cost)
         teacher = Teacher(data, "IEA", normal=[-1, 1], mlp=mlp)
-        teacher.teach(av.epoch, time=True)
-        teacher.save(datetime.now().date().isoformat() + av.save)
+        teacher.teach(av.epoch, time=True, frac=av.sample)
+        teacher.save(av.save, date=datetime.now().date().isoformat())
         return 0
     except Exception as err:
         if av.debug:

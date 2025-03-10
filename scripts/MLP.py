@@ -137,9 +137,6 @@ class MLP:
         Args:
             <data> is the matrix containing, by row, inputs to train over.
         """
-        indices = np.random.permutation(data.shape[0])
-        truth = truth[indices]
-        data = data[indices]
         for (i, (y, x)) in enumerate(zip(truth, data)):
             print(f"\rPerforming iteration: {i}", end='')
             self._backpropagate(y, np.fromiter(self._forward_pass(x), ndarray))
