@@ -94,7 +94,7 @@ def main() -> int:
             av.mlp, av.training, av.sample, title="Consommation étalon",
             alpha=av.alpha, grid=av.grid
         )
-        # graph.plot_training_set()
+        graph.plot_training_set()
         graph.plot_mlp()
         plt.show()
         return 0
