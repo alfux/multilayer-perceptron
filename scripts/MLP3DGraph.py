@@ -18,15 +18,15 @@ class MLP3DGraph:
     """Used to plot a 3D Graph projection of the MLP against training set."""
 
     def __init__(
-            self: Self, mlp: str, training: str, frac: float = 0.01,
-            title: str = "Graph", grid: int = 100,
+            self: Self, mlp: str | MLP, training: str | DataFrame,
+            frac: float = 1, title: str = "Graph", grid: int = 100,
             figsize: tuple = (15, 9), alpha: float = 0.75
     ) -> None:
         """Initializes the 3D Graph projection.
 
         <b>Args:</b>
-            <b>mlp</b> is the path of the MLP
-            <b>training</b> is the path of the training set
+            <b>mlp</b> is the path of the MLP or the MLP
+            <b>training</b> is the path of the training set or the training set
             <b>frac</b> is the ratio of the sample
             <b>title</b> is the window title
             <b>grid</b> is the mesh smoothness
@@ -36,8 +36,14 @@ class MLP3DGraph:
         """
         self._fig: Figure = plt.figure(figsize=figsize)
         self._ax: Axes = self._fig.add_subplot(111, projection="3d")
-        self._mlp: MLP = MLP.load(mlp)
-        self._set: DataFrame = pd.read_csv(training).sample(frac=frac)
+        if isinstance(mlp, str):
+            self._mlp: MLP = MLP.load(mlp)
+        else:
+            self._mlp = mlp
+        if isinstance(training, str):
+            self._set: DataFrame = pd.read_csv(training).sample(frac=frac)
+        else:
+            self._set = training
         self._grid: int = grid
         self._alpha: float = alpha
         self._x: ndarray = self._set["Temps (sec)"].to_numpy()
@@ -75,6 +81,13 @@ class MLP3DGraph:
         self._ax.scatter(x, y, z, c=z, cmap="viridis", marker="o", alpha=1)
         return self
 
+    def verify(self: Self) -> Self:
+        """Verifies the score"""
+        input_layer = self._set.loc[:, ["Temps (sec)", "FaitJour"]].to_numpy()
+        output = self._mlp.eval(input_layer)
+        truth = self._set.loc[:, ["IEA"]]
+        print("\n\tLoss = ", self._mlp.cost.eval(truth, output))
+
 
 def main() -> int:
     """Plot the model's surface against the training datas."""
@@ -94,8 +107,7 @@ def main() -> int:
             av.mlp, av.training, av.sample, title="Consommation étalon",
             alpha=av.alpha, grid=av.grid
         )
-        graph.plot_training_set()
-        graph.plot_mlp()
+        graph.plot_training_set().plot_mlp().verify()
         plt.show()
         return 0
     except Exception as err:

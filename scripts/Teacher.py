@@ -21,11 +21,8 @@ class Teacher:
         pass
 
     def __init__(
-            self: Self,
-            book: DataFrame,
-            target: str | int,
-            normal: list = [0, 1],
-            mlp: MLP = None
+            self: Self, book: DataFrame, target: str | int,
+            normal: list = [0, 1], mlp: MLP = None
     ) -> None:
         """<b>Creates an MLP Teacher</b>.
 
@@ -37,10 +34,10 @@ class Teacher:
         <b>Returns:</b>
             Nothing
         """
-        self._prep = Processor(book, target)
-        self._prep.pre_normalize(normal).post_normalize(normal).add_bias()
-        self._data: ndarray = self._prep.data
-        self._truth: ndarray = self._prep.target
+        self._proc = Processor(book, target)
+        self._proc.pre_normalize(normal).post_normalize(normal).pre_bias()
+        self._data: ndarray = self._proc.data
+        self._truth: ndarray = self._proc.target
         self._mlp: MLP = mlp
 
     @property
@@ -53,78 +50,26 @@ class Teacher:
         """Setter for the mlp model."""
         self._mlp = value
 
-    # Review stop break condition as the computed gradient isn't accurate.
     def teach(
-            self: Self, epoch: int, time: bool = False, frac: float = 1
+        self: Self, epoch: int, time: bool = False, frac: float = 1
     ) -> Self:
         """Teaches the lesson to the internal MLP.
 
-        <b>Args:</b>
-            <b>epoch</b> is the number of epoch to realise with the training.
-            <b>time</b> is a boolean to print the training time
-            <b>threshold</b> breaks the training between epochs if reached
-        <b>Returns:</b>
-            The current instance
+        Args:
+            <epoch> is the number of epoch to realise with the training. When
+            given <epoch> is 0 or less, precision is used to end the training.
         """
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
         t = datetime.now()
         for i in range(epoch):
             print(f"\nEpoch {i}:")
-            (truth, data) = self._sample(frac)
-            self._mlp.update(truth, data)
-            output = self._mlp.eval(data)
-            print(f"\nLoss = {self._mlp.cost.eval(truth, output)}")
-            grad = np.linalg.norm(self._mlp.cost.diff(truth, output))
-            print(f"\nGrad = {grad}")
+            self._mlp.update(*self._sample(frac))
+        self._mlp.preprocess = self._proc.preprocess
+        self._mlp.postprocess = self._proc.postprocess
         if time:
-            print("Training time:", datetime.now() - t)
+            print("\n\tTraining time:", datetime.now() - t)
         return self
-
-    def save(
-            self: "Teacher", path: str = "default.mlp", date: datetime = None
-    ) -> "Teacher":
-        """Saves the current mlp into the file in path."""
-        self._mlp.preprocess = self._prep.prestr
-        self._mlp.postprocess = self._prep.poststr
-        sep = path[::-1].split('.', maxsplit=1)
-        self._mlp.save(sep[1][::-1] + '_' + date + '.' + sep[0][::-1])
-        return self
-
-    def basic_regressor(self: Self) -> MLP:
-        """Generates a basic MLP regressor based on the given DataFrame."""
-        nx = self._data.shape[1]
-        activation = Neuron("Neuron.ReLU", "Neuron.dReLU")
-        bias = Neuron("Neuron.bias", "Neuron.dbias")
-        matrix: ndarray = np.random.randn(nx, nx) * np.sqrt(2 / nx)
-        matrix[-1] = np.zeros(matrix.shape[1])
-        layers = [Layer([activation] * (nx - 1) + [bias], matrix)]
-        for i in range(nx, 3, -1):
-            matrix = np.random.randn(i - 1, i) * np.sqrt(2 / i)
-            matrix[-1] = np.zeros(matrix.shape[1])
-            layers += [Layer([activation] * (i - 2) + [bias], matrix)]
-        matrix = np.random.randn(1, 3) * np.sqrt(2 / 3)
-        layers += [Layer([activation], matrix)]
-        cost = Neuron("Neuron.MSE", "Neuron.dMSE")
-        return MLP(layers, cost, learning_rate=1e-3)
-
-    def basic_classifier(self: Self) -> MLP:
-        """Generates a basic MLP classifier based on the given DataFrame."""
-        (nx, ny) = (self._data.shape[1], len(self._prep.unique))
-        activation = Neuron("Neuron.ReLU", "Neuron.dReLU")
-        bias = Neuron("Neuron.bias", "Neuron.dbias")
-        matrix: ndarray = np.random.randn(nx, nx) * np.sqrt(2 / nx)
-        matrix[-1] = np.zeros(matrix.shape[1])
-        layers = [Layer([activation] * (nx - 1) + [bias], matrix)]
-        for i in range(nx, ny + 1, -1):
-            matrix = np.random.randn(i - 1, i) * np.sqrt(2 / i)
-            matrix[-1] = np.zeros(matrix.shape[1])
-            layers += [Layer([activation] * (i - 2) + [bias], matrix)]
-        activation = Neuron("Neuron.softmax", "Neuron.dsoftmax")
-        matrix = np.random.randn(ny, ny + 1) * np.sqrt(2 / (ny + 1))
-        layers += [Layer([activation], matrix)]
-        cost = Neuron("Neuron.CELF", "Neuron.dCELF")
-        return MLP(layers, cost, learning_rate=1e-3)
 
     def _sample(self: Self, frac: float) -> tuple[ndarray, ndarray]:
         """Selects a random sample of the data.
@@ -139,8 +84,25 @@ class Teacher:
         return (self._truth[idx], self._data[idx])
 
 
+def basic_regressor(nx: int) -> MLP:
+    """Generates a basic MLP regressor based on the given DataFrame."""
+    activation = Neuron("Neuron.ReLU", "Neuron.dReLU")
+    bias = Neuron("Neuron.bias", "Neuron.dbias")
+    matrix: ndarray = np.random.randn(nx, nx) * np.sqrt(2 / nx)
+    matrix[-1] = np.zeros(matrix.shape[1])
+    layers = [Layer([activation] * (nx - 1) + [bias], matrix)]
+    for i in range(nx, 3, -1):
+        matrix = np.random.randn(i - 1, i) * np.sqrt(2 / i)
+        matrix[-1] = np.zeros(matrix.shape[1])
+        layers += [Layer([activation] * (i - 2) + [bias], matrix)]
+    matrix = np.random.randn(1, 3) * np.sqrt(2 / 3)
+    layers += [Layer([activation], matrix)]
+    cost = Neuron("Neuron.MSE", "Neuron.dMSE")
+    return MLP(layers, cost, learning_rate=1e-3)
+
+
 def main() -> int:
-    """Trains an MLP."""
+    """Trains an example regression MLP."""
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")
@@ -156,8 +118,8 @@ def main() -> int:
         df.columns = df.columns.map(str)
         df = df.drop(av.drops.split(';') if av.drops != '' else [], axis=1)
         teacher = Teacher(df, target=av.answer, normal=eval(av.n))
-        teacher.mlp = teacher.basic_regressor()
-        teacher.teach(epoch=1).save("regression_conso.mlp")
+        teacher.mlp = basic_regressor(df.shape[1])
+        teacher.teach(epoch=1).mlp.save("regression_conso.mlp")
         teacher.mlp = MLP.load("regression_conso.mlp")
         return 0
     except Exception as err:

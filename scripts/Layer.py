@@ -46,22 +46,6 @@ class Layer:
         """Returns the length of the layer."""
         return len(self._matrix)
 
-    def __repr__(self: Self) -> str:
-        """String representation of the object."""
-        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
-        if isinstance(self._neurons, list):
-            neuron_list = ""
-            for neuron in set(self._neurons):
-                if len(neuron_list) != 0:
-                    neuron_list += " + "
-                n = len([x for x in self._neurons if x == neuron])
-                neuron_list += f"[{neuron}] * {n}"
-        else:
-            neuron_list = f"[{self._neurons}]"
-        strepr = f"Layer({neuron_list},\nnp.{repr(self._matrix)})"
-        np.set_printoptions()
-        return strepr
-
     @property
     def W(self: Self) -> ndarray:
         """Get the matrix of weights."""

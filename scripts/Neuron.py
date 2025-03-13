@@ -28,10 +28,6 @@ class Neuron:
         self.eval: Callable = eval(f)
         self.diff: Callable = eval(df)
 
-    def __repr__(self: Self) -> str:
-        """String representation of the object."""
-        return f"Neuron(\"{self._f}\", \"{self._df}\")"
-
     def eval(self: Self, *args: list) -> ndarray:
         """Computes neuron's output.
 

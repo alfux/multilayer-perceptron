@@ -23,82 +23,54 @@ class MLP:
         """Creates a single or multilayer perceptron.
 
         Args:
-            <layers> is a list of Layer objects. They represent hidden layers
+            layers is a list of Layer objects. They represent hidden layers
             and the output layer of the network.
-            <cost> is the cost function used to train the model and measure
+            cost is the cost function used to train the model and measure
             its performance.
         Keyword arguments <kw>:
-            <learning_rate> is the speed of learning, the lower the learning
+            learning_rate is the speed of learning, the lower the learning
             rate, the slower the convergence. But a higher learning rate may
             lead complete to divergence.
-            <preprocess> is the preprocessing function used over the training
-            dataset. Must be an evaluable string.
-            <postprocess> is the postprocessing function used over the training
-            output. Must be an evaluable string.
+            preprocess is the preprocessing list of functions used over the
+            training dataset.
+            postprocess is the postprocessing list of functions used over the
+            training output.
         """
         self._layers: list[Layer] = layers
         self._cost: Neuron = cost
         self._lr: float = kw.get("learning_rate", 1e-3)
-        self._b1: float = kw.get("b1", 0.9)
-        self._pb1: float = self._b1
+        (self._b1, self._b2) = (kw.get("b1", 0.9), kw.get("b2", 0.999))
+        (self._pb1, self._pb2) = (self._b1, self._b2)
         self._m: list = [np.zeros(layer.W.shape) for layer in layers]
-        self._b2: float = kw.get("b2", 0.999)
-        self._pb2: float = self._b2
         self._v: list = [np.zeros(layer.W.shape) for layer in layers]
-        self.preprocess: Callable = kw.get("preprocess", "lambda x: x")
-        self.postprocess: Callable = kw.get("postprocess", "lambda x: x")
+        self.preprocess = kw.get("preprocess", [])
+        self.postprocess = kw.get("postprocess", [])
 
     def __len__(self: "MLP") -> int:
         """Returns the number of layers in the MLP."""
         return len(self._layers)
 
-    def __repr__(self: "MLP") -> str:
-        """String representation of the object."""
-        string = ""
-        for layer in self._layers:
-            if len(string) == 0:
-                string += f"\n{layer}"
-            else:
-                string += f",\n{layer}"
-        string = f"MLP([{string}],\n{self._cost},\nlearning_rate={self._lr},\n"
-        string += f"b1={self._b1},\nb2={self._b2},\npreprocess="
-        string += f"\"{self._prep_str}\",\npostprocess=\"{self._post_str}\"\n)"
-        return string
-
     @property
     def preprocess(self: "MLP") -> Callable:
-        """Getter of the preprocessor function."""
-        return self._preprocess
+        """Getter for the preprocessor."""
+        return self._prepro
 
     @preprocess.setter
-    def preprocess(self: "MLP", value: str) -> None:
-        """Setter of the preprocessor function as a string."""
-        self._prep_str = value
-        self._preprocess = eval(value)
+    def preprocess(self: "MLP", value: list[Callable]) -> None:
+        """Setter for the preprocessor."""
+        self._save_prepro = value
+        self._prepro = Processor.compile_processes(value)
 
     @property
     def postprocess(self: "MLP") -> Callable:
-        """Getter of the postprocessor function."""
-        return self._postprocess
+        """Getter for the postprocessor."""
+        return self._postpro
 
     @postprocess.setter
-    def postprocess(self: "MLP", value: str) -> None:
-        """Setter of the postprocessor function as a string."""
-        self._post_str = value
-        self._postprocess = eval(value)
-
-    @property
-    def processor(self: "MLP") -> tuple[Callable]:
-        """Getter for the pre and post processors."""
-        return (self._preprocess, self._postprocess)
-
-    @processor.setter
-    def processor(self: "MLP", value: Processor) -> None:
-        """Setter for the pre and post processors."""
-        self._prep_str = value.prestr
-        self._preprocess = eval(value.prestr)
-        self._post_str = value.poststr
-        self._postprocess = eval(value.poststr)
+    def postprocess(self: "MLP", value: list[Callable]) -> None:
+        """Setter for the postprocessor."""
+        self._save_postpro = value
+        self._postpro = Processor.compile_processes(value)
 
     @property
     def cost(self: "MLP") -> Neuron:
@@ -121,14 +93,30 @@ class MLP:
         This function is dynamically allocated depending on the presence of a
         preprocess function or not.
         Args:
-            <x> is the input of the layer.
+            x is the input of the layer.
         Returns:
             The output of the last layer.
         """
-        x = self._preprocess(x)
+        x = self._prepro(x)
         for layer in self._layers:
             x = layer.eval(x)
-        return self._postprocess(x)
+        return self._postpro(x)
+
+    def save(self: "MLP", path: str = "./default.npy") -> "MLP":
+        """Saves the MLP in a numpy file.
+
+        Args:
+            path is the save file path
+        Returns:
+            The current instance
+        """
+        mlp = {
+            "layers": self._layers, "cost": self._cost,
+            "learning_rate": self._lr, "b1": self._b1, "b2": self._b2,
+            "preprocess": self._save_prepro, "postprocess": self._save_postpro
+        }
+        np.save(path, mlp, allow_pickle=True)
+        return self
 
     def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
         """Updates the model by one pass of stochastic gradient descent.
@@ -142,13 +130,6 @@ class MLP:
             self._backpropagate(y, np.fromiter(self._forward_pass(x), ndarray))
             self._pb1 *= self._b1
             self._pb2 *= self._b2
-
-    def save(self: "MLP", path: str = "./default.mlp") -> "MLP":
-        """Saves the mlp in a file."""
-        with open(path, "wb") as file:
-            file.write(str(self).encode())
-        print("MLP saved successfuly in " + path)
-        return self
 
     def _backpropagate(self: "MLP", y: ndarray, input: ndarray) -> None:
         """Updates matrices with backpropagation.
@@ -193,11 +174,14 @@ class MLP:
 
     @staticmethod
     def load(path: str) -> "MLP":
-        """Loads an mlp into the teacher."""
-        with open(path, "rb") as file:
-            mlp = eval(file.read().decode())
-        print("MLP " + path + " loaded successfuly")
-        return mlp
+        """Loads an MLP
+
+        Args:
+            path is the path to the file to load
+        Returns:
+            The loaded instance of the MLP
+        """
+        return MLP(**np.load(path, allow_pickle=True).item())
 
 
 def main() -> int:

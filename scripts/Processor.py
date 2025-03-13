@@ -16,32 +16,17 @@ class Processor:
         """Creates a preprocessor for a given dataset.
 
         Args:
-            <dataset> is the DataFrame to preprocess.
-            <labels> is the column of the DataFrame containing classification
-            characters.
+            dataset is the DataFrame to process.
+            target is the column containing the learning target.
         """
-        if target is None:
-            target = dataset.columns[0]
         self._target: DataFrame = dataset.loc[:, [target]]
-        self._unique: ndarray = None
         self._data: DataFrame = dataset.drop([target], axis=1)
         constant = (self._data == self._data.iloc[0]).all(axis=0)
         self._data = self._data.loc[:, ~constant]
         self._stat: DataFrame = Statistics(self._data).stats
-        self._preprocess: Callable = Processor.identity
-        self._prestr = "lambda x: x"
-        self._postprocess: Callable = Processor.identity
-        self._poststr = "lamnda x: x"
-
-    @property
-    def prestr(self: Self) -> str:
-        """String of the input transformation. Can be used with eval()."""
-        return self._prestr
-
-    @property
-    def poststr(self: Self) -> str:
-        """"String of the output transformation. Can be used with eval(). """
-        return self._poststr
+        self._unique: ndarray = None
+        self._preprocess: list[Callable] = []
+        self._postprocess: list[Callable] = []
 
     @property
     def target(self: Self) -> ndarray:
@@ -57,13 +42,8 @@ class Processor:
             self._target = value
 
     @property
-    def unique(self: Self) -> ndarray:
-        """Getter of the ordered list of unique labels."""
-        return self._unique
-
-    @property
     def data(self: Self) -> ndarray:
-        """Getter of the current unprocessed dataset."""
+        """Getter of the current dataset."""
         return self._data.to_numpy()
 
     @data.setter
@@ -75,13 +55,20 @@ class Processor:
             self._data = value
         self._stat = Statistics(self._data).stats
 
-    def pre(self: Self, x: ndarray) -> ndarray:
-        "Calling preprocessor."
-        return self._preprocess(x)
+    @property
+    def unique(self: Self) -> ndarray:
+        """Getter of the ordered list of unique labels."""
+        return self._unique
 
-    def post(self: Self, x: ndarray) -> ndarray:
-        "Calling postprocessor"
-        return self._postprocess(x)
+    @property
+    def preprocess(self: Self) -> list[Callable]:
+        """Getter of the ordered list of performed preprocesses"""
+        return self._preprocess
+
+    @property
+    def postprocess(self: Self) -> list[Callable]:
+        """Getter of the ordered list of performed postprocesses"""
+        return self._postprocess
 
     def onehot(self: Self) -> Self:
         """Transform the label field in a vectorized equivalent."""
@@ -91,6 +78,18 @@ class Processor:
             self._unique = uni
         return self
 
+    def pre_standardize(self: Self) -> Self:
+        """Standardizes the current dataset and stores the process.
+
+        <b>Returns:</b>
+            The current instance of the class.
+        """
+        mean = self._stat.loc["Mean"].to_numpy()
+        std = self._stat.loc["Std"].to_numpy()
+        self.data = Processor.standardize(mean, std, self._data)
+        self._preprocess += [(Processor.standardize, [mean, std])]
+        return self
+
     def post_standardize(self: Self) -> Self:
         """Standardizes the current target and stores the inverse process.
 
@@ -98,41 +97,12 @@ class Processor:
             The current instance of the class.
         """
         stats = Statistics(self._target).stats
-        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
         mean = stats.loc["Mean"].to_numpy()
         std = stats.loc["Std"].to_numpy()
-        strepr = f"lambda x: (x - np.{repr(mean)}) / np.{repr(std)})"
-        strrev = f"lambda x: np.{repr(std)} * x + np.{repr(mean)}"
-        np.set_printoptions()
-        return self._post_apply(strepr, strrev)
-
-    def post_normalize(self: Self, b: list[float] = [0, 1]) -> Self:
-        """Normalizes the current target and stores the inverse process.
-
-        <b>Returns:</b>
-            The current instance of the class.
-        """
-        stats = Statistics(self._target).stats
-        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
-        m = stats.loc["Min"].to_numpy()
-        s = stats.loc["Max"].to_numpy() - m
-        rep = f"{b[0]} + {b[1] - b[0]} * (x - np.{repr(m)}) / np.{repr(s)}"
-        rev = f"np.{repr(m)} + np.{repr(s)} * (x - {b[0]}) / {b[1] - b[0]}"
-        np.set_printoptions()
-        return self._post_apply("lambda x: " + rep, "lambda x: " + rev)
-
-    def pre_standardize(self: Self) -> Self:
-        """Standardizes the current dataset and stores the process.
-
-        <b>Returns:</b>
-            The current instance of the class.
-        """
-        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
-        mean = self._stat.loc["Mean"].to_numpy()
-        std = self._stat.loc["Std"].to_numpy()
-        strepr = f"lambda x: (x - np.{repr(mean)}) / np.{repr(std)})"
-        np.set_printoptions()
-        return self._pre_apply(strepr)
+        self.target = Processor.standardize(mean, std, self._target)
+        new_postprocess = [(Processor.unstdardize, [mean, std])]
+        self._postprocess = new_postprocess + self._postprocess
+        return self
 
     def pre_normalize(self: Self, b: list[float] = [0, 1]) -> Self:
         """Normalizes the current dataset and stores the process.
@@ -142,74 +112,118 @@ class Processor:
         Returns:
             The current instance of the class.
         """
-        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
         m = self._stat.loc["Min"].to_numpy()
         s = self._stat.loc["Max"].to_numpy() - m
-        rep = f"{b[0]} + {b[1] - b[0]} * (x - np.{repr(m)}) / np.{repr(s)}"
-        np.set_printoptions()
-        return self._pre_apply("lambda x: " + rep)
-
-    def add_bias(self: Self) -> Self:
-        """Adds a bias component at the end of the vector."""
-        return self._pre_apply("Processor.adding_bias")
-
-    def _pre_apply(self: Self, strepr: str) -> Self:
-        """Apply given function to the data and stores it.
-
-        Args:
-            <func> function to apply.
-            <strepr> is a string representation of the added preprocess.
-        """
-        func = eval(strepr)
-        if self._preprocess == Processor.identity:
-            self._preprocess = func
-            self._prestr = strepr
-        else:
-            pre_func = self._preprocess
-            self._preprocess = lambda x: func(pre_func(x))
-            self._prestr = self._str_compose(strepr, self._prestr)
-        self.data = func(self._data)
+        self.data = Processor.normalize(m, s, b, self._data)
+        self._preprocess += [(Processor.normalize, [m, s, b])]
         return self
 
-    def _post_apply(self: Self, strepr: str, strrev: str) -> Self:
-        """Apply given function to the target and stores the invers.
+    def post_normalize(self: Self, b: list[float] = [0, 1]) -> Self:
+        """Normalizes the current target and stores the inverse process.
 
-        <b>Args:</b>
-            <i>strepr</i> is the string to be eval() as the function.
-            <i>strrev</i> is the string to be eval() as the inverse."""
-        func = eval(strepr)
-        if self._postprocess == Processor.identity:
-            self._postprocess = func
-            self._poststr = strrev
-        else:
-            pre_func = self._postprocess
-            self._postprocess = lambda x: pre_func(func(x))
-            self._poststr = self._str_compose(self._poststr, strrev)
-        self.target = func(self._target)
+        <b>Returns:</b>
+            The current instance of the class.
+        """
+        stats = Statistics(self._target).stats
+        m = stats.loc["Min"].to_numpy()
+        s = stats.loc["Max"].to_numpy() - m
+        self.target = Processor.normalize(m, s, b, self._target)
+        new_postprocess = [(Processor.unrmalize, [m, s, b])]
+        self._postprocess = new_postprocess + self._postprocess
         return self
 
-    def _str_compose(self: Self, outer: str, inner: str) -> str:
-        """Compose the new str representation with the old one.
-        Args:
-            The new added process as a string.
-        Returns:
-            The composition as a string.
-        """
-        if ':' in outer:
-            (prototype, body) = outer.split(':')
-            (prefix, suffix) = body.split('x')
-            return prototype + prefix + f"({inner})(x)" + suffix
-        else:
-            return f"lambda x: {outer}(({inner})(x))"
+    def pre_bias(self: Self) -> Self:
+        """Adds a bias component at the end of the vector of the dataset."""
+        self.data = Processor.add_bias(self._data)
+        self._preprocess += [(Processor.add_bias, [])]
+        return self
 
     @staticmethod
-    def adding_bias(x: ndarray) -> ndarray:
+    def compile_processes(processes: list[Callable]) -> Callable:
+        """Compiles a list of processes in a single function.
+
+        Args:
+            processes is the list of tuples containing a function and its
+            parameters.
+        """
+        if len(processes) == 0:
+            return Processor.identity
+
+        def result(x: ndarray) -> ndarray:
+            """First process"""
+            return processes[0][0](*processes[0][1], x)
+
+        for process in processes[1:]:
+            prev = result
+
+            def result(x: ndarray) -> ndarray:
+                """Composed process"""
+                return process[0](*process[1], prev(x))
+
+        return result
+
+    @staticmethod
+    def standardize(mean: ndarray, std: ndarray, x: ndarray) -> ndarray:
+        """Standardizes a ndarray.
+
+        Args:
+            mean is the mean of the datas to standardize
+            std is the standard deviation of the datas to standardize
+            x is the input to standardize
+        Returns:
+            The standardized output
+        """
+        return (x - mean) / std
+
+    @staticmethod
+    def unstdardize(mean: ndarray, std: ndarray, x: ndarray) -> ndarray:
+        """Revert the standardization of a ndarray.
+
+        Args:
+            mean is the mean of the datas before standardization
+            std is the standard deviation of the datas before standardization
+            x is the input to unstandardize
+        Returns:
+            The unstandardized output
+        """
+        return std * x + mean
+
+    @staticmethod
+    def normalize(min: ndarray, span: ndarray, b: list, x: ndarray) -> ndarray:
+        """Normalizes a ndarray.
+
+        Args:
+            min is the min of the datas to normalize
+            span is the Max - Min range of the datas to normalize
+            x is the input to normalize
+        Returns:
+            The normalized output
+        """
+        return b[0] + (b[1] - b[0]) * (x - min) / span
+
+    @staticmethod
+    def unrmalize(min: ndarray, span: ndarray, b: list, x: ndarray) -> ndarray:
+        """Revert the normalization of a ndarray.
+
+        Args:
+            min is the min of the datas before normalization
+            span is the Max - Min range of the datas before normalization
+            x is the input to unnormalize
+        Returns:
+            The unnormalized output
+        """
+        return min + span * (x - b[0]) / (b[1] - b[0])
+
+    @staticmethod
+    def add_bias(x: ndarray) -> ndarray:
+        """Adds a column of 1 at the right end of a ndarray."""
         if x.ndim == 2:
             return np.column_stack([x, np.ones((x.shape[0], 1))])
         return np.concat([x, np.ones(1)])
 
     @staticmethod
     def identity(x: ndarray) -> ndarray:
+        """Returns the input."""
         return x
 
 

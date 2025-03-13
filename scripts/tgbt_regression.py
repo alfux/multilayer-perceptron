@@ -35,11 +35,13 @@ def main() -> int:
         data: DataFrame = pd.read_csv(av.file)
         data = data.loc[:, ["IEA", "Temps (sec)", "FaitJour"]]
         lrelu = Neuron("Neuron.LReLU", "Neuron.dLReLU")
-        cost = Neuron("Neuron.MSE", "Neuron.dMSE")
+        cost = Neuron("Neuron.MAE", "Neuron.dMAE")
         mlp = MLP(list(gen_layers([2, 32, 16, 8, 4, 2], lrelu)), cost)
         teacher = Teacher(data, "IEA", normal=[-1, 1], mlp=mlp)
         teacher.teach(av.epoch, time=True, frac=av.sample)
-        teacher.save(av.save, date=datetime.now().date().isoformat())
+        sep = av.save[::-1].split('.', maxsplit=1)
+        date = datetime.now().date().isoformat()[::-1]
+        teacher.mlp.save((date + "_" + sep[1])[::-1])
         return 0
     except Exception as err:
         if av.debug:
