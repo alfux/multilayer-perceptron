@@ -15,18 +15,20 @@ class Neuron:
     in order to reduce time and operations complexities.
     """
 
-    def __init__(self: Self, f: str, df: str) -> None:
+    def __init__(self: Self, f: Callable | str, df: Callable = None) -> None:
         """Define neuron with its activation function and derivative.
 
         Args:
-            <f> and <df> must be a C1 single parameter real function and it's
-            derivative, respectively. They are entered as a string that will be
-            evaluated.
+            f must be a single parameter real function or the name of a
+            predefined Neuron.
+            df must be the derivative of f. If f is a string, df is ignored.
         """
-        self._f: str = f
-        self._df: str = df
-        self.eval: Callable = eval(f)
-        self.diff: Callable = eval(df)
+        if isinstance(f, str):
+            self.eval: Callable = eval("Neuron." + f)
+            self.diff: Callable = eval("Neuron.d" + f)
+        else:
+            self.eval: Callable = f
+            self.diff: Callable = df
 
     def eval(self: Self, *args: list) -> ndarray:
         """Computes neuron's output.

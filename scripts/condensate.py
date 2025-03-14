@@ -21,7 +21,7 @@ def main() -> int:
         relevant = data.drop(av.ignore, axis=1)
         relevant = relevant.apply(pd.to_numeric, errors="coerce")
         ignored = data.loc[:, av.ignore]
-        relevant = relevant.dropna(how="any").drop_duplicates()
+        relevant = relevant.dropna(how="any")
         ignored = ignored.loc[relevant.index].reset_index(drop=True)
         relevant = relevant.reset_index(drop=True)
         relevant = relevant.loc[:, ~(relevant == relevant.iloc[0]).all(axis=0)]

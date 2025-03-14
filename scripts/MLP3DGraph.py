@@ -84,8 +84,8 @@ class MLP3DGraph:
     def verify(self: Self) -> Self:
         """Verifies the score"""
         input_layer = self._set.loc[:, ["Temps (sec)", "FaitJour"]].to_numpy()
+        truth = self._set.loc[:, ["IEA"]].to_numpy()
         output = self._mlp.eval(input_layer)
-        truth = self._set.loc[:, ["IEA"]]
         print("\n\tLoss = ", self._mlp.cost.eval(truth, output))
 
 
@@ -95,13 +95,13 @@ def main() -> int:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")
         message = "ratio of the sample compared to the full set of data"
-        av.add_argument("--sample", default=0.01, type=float, help=message)
+        av.add_argument("--sample", default=1, type=float, help=message)
         message = "alpha value of the mlp surface (transparency)"
         av.add_argument("--alpha", default=1.0, type=float, help=message)
         message = "axes subdivisions to determine surface mesh subdivisions"
         av.add_argument("--grid", default=100, type=int, help=message)
-        av.add_argument("mlp", help="path to mlp file")
         av.add_argument("training", help="path to the training file")
+        av.add_argument("mlp", help="path to mlp file")
         av = av.parse_args()
         graph = MLP3DGraph(
             av.mlp, av.training, av.sample, title="Consommation étalon",

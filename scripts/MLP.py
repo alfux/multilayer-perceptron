@@ -116,6 +116,7 @@ class MLP:
             "preprocess": self._save_prepro, "postprocess": self._save_postpro
         }
         np.save(path, mlp, allow_pickle=True)
+        print(f"{path} saved successfully !")
         return self
 
     def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
@@ -181,7 +182,9 @@ class MLP:
         Returns:
             The loaded instance of the MLP
         """
-        return MLP(**np.load(path, allow_pickle=True).item())
+        mlp = MLP(**np.load(path, allow_pickle=True).item())
+        print(f"{path} loaded successfuly !")
+        return mlp
 
 
 def main() -> int:
