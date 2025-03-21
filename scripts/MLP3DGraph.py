@@ -20,7 +20,8 @@ class MLP3DGraph:
     def __init__(
             self: Self, mlp: str | MLP, training: str | DataFrame,
             frac: float = 1, title: str = "Graph", grid: int = 100,
-            figsize: tuple = (15, 9), alpha: float = 0.75
+            figsize: tuple = (15, 9), alpha: float = 0.75,
+            xlim: list[float] = [0, 90000], ylim: list[float] = [0, 5000]
     ) -> None:
         """Initializes the 3D Graph projection.
 
@@ -53,6 +54,7 @@ class MLP3DGraph:
         self._ax.set_xlabel("Temps (sec)")
         self._ax.set_ylabel("FaitJour")
         self._ax.set_zlabel("Index Energie Active")
+        (self._xlim, self._ylim) = (xlim, ylim)
 
     def plot_mlp(self: Self) -> Self:
         """Plots the mlp's output.
@@ -60,8 +62,8 @@ class MLP3DGraph:
         <b>Returns:</b>
             The current instance
         """
-        x = np.linspace(np.min(self._x), np.max(self._x), self._grid)
-        y = np.linspace(np.min(self._y), np.max(self._y), self._grid)
+        x = np.linspace(self._xlim[0], self._xlim[1], self._grid)
+        y = np.linspace(self._ylim[0], self._ylim[1], self._grid)
         (x, y) = np.meshgrid(x, y)
         z = np.array([[None] * self._grid] * self._grid)
         for i in range(self._grid):
@@ -86,7 +88,13 @@ class MLP3DGraph:
         input_layer = self._set.loc[:, ["Temps (sec)", "FaitJour"]].to_numpy()
         truth = self._set.loc[:, ["IEA"]].to_numpy()
         output = self._mlp.eval(input_layer)
-        print("\n\tLoss = ", self._mlp.cost.eval(truth, output))
+        print("\n\tLoss = ", self._mlp.cost.eval(truth, output), end="\n\n")
+        return self
+
+    def show(self: Self) -> Self:
+        """Shows the plot, callback to plt.show()"""
+        plt.show()
+        return self
 
 
 def main() -> int:
@@ -100,19 +108,19 @@ def main() -> int:
         av.add_argument("--alpha", default=1.0, type=float, help=message)
         message = "axes subdivisions to determine surface mesh subdivisions"
         av.add_argument("--grid", default=100, type=int, help=message)
+        av.add_argument("--xlim", default=[0, 90000], type=float, nargs=2)
+        av.add_argument("--ylim", default=[0, 6000], type=float, nargs=2)
         av.add_argument("training", help="path to the training file")
         av.add_argument("mlp", help="path to mlp file")
         av = av.parse_args()
-        graph = MLP3DGraph(
+        MLP3DGraph(
             av.mlp, av.training, av.sample, title="Consommation étalon",
-            alpha=av.alpha, grid=av.grid
-        )
-        graph.plot_training_set().plot_mlp().verify()
-        plt.show()
+            alpha=av.alpha, grid=av.grid, xlim=av.xlim, ylim=av.ylim
+        ).plot_training_set().plot_mlp().verify().show()
         return 0
     except Exception as err:
         if av.debug:
-            print(traceback.format_exc())
+            print(traceback.format_exc(), file=sys.stderr)
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
         return 1
 

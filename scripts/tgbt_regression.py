@@ -54,7 +54,7 @@ def main() -> int:
         av = get_args(main.__doc__)
         data = pd.read_csv(av.file).loc[:, ["IEA", "Temps (sec)", "FaitJour"]]
         (lrelu, cost) = (Neuron("LReLU"), Neuron(av.cost))
-        mlp = MLP(list(gen_layers([2, 32, 16, 8, 4, 2], lrelu)), cost)
+        mlp = MLP(list(gen_layers(av.layers, lrelu)), cost)
         teacher = Teacher(data, "IEA", normal=[-1, 1], mlp=mlp)
         teacher.teach(av.epoch, time=True, frac=av.sample)
         sep = av.save[::-1].split('.', maxsplit=1)
@@ -64,7 +64,7 @@ def main() -> int:
         return 0
     except Exception as err:
         if av.debug:
-            print(traceback.format_exc())
+            print(traceback.format_exc(), file=sys.stderr)
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
         return 1
 

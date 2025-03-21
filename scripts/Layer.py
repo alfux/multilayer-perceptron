@@ -134,7 +134,7 @@ def main() -> int:
         return 0
     except Exception as err:
         if av.debug:
-            print(traceback.format_exc())
+            print(traceback.format_exc(), file=sys.stderr)
         print(f"\n\tFatal: {type(err).__name__}: {err}\n", file=sys.stderr)
         return 1
 
