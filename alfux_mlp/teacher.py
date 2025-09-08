@@ -9,8 +9,8 @@ from numpy import ndarray
 import pandas as pd
 from pandas import DataFrame
 
-from MLP import MLP, Layer, Neuron
-from Processor import Processor
+from .mlp import MLP, Layer, Neuron
+from .processor import Processor
 
 
 class Teacher:
@@ -22,7 +22,8 @@ class Teacher:
 
     def __init__(
             self: Self, book: DataFrame, target: str | int,
-            normal: list = [0, 1], mlp: MLP = None
+            normal: list = [0, 1], mlp: MLP = None, pre: str = "normalize",
+            post: str = "normalize", bias: bool = True
     ) -> None:
         """<b>Creates an MLP Teacher</b>.
 
@@ -35,7 +36,16 @@ class Teacher:
             Nothing
         """
         self._proc = Processor(book, target)
-        self._proc.pre_normalize(normal).post_normalize(normal).pre_bias()
+        if pre == "normalize":
+            self._proc.pre_normalize(normal)
+        elif pre == "standardize":
+            self._proc.pre_standardize()
+        if post == "normalize":
+            self._proc.post_normalize(normal)
+        elif post == "standardize":
+            self._proc.post_standardize()
+        if bias:
+            self._proc.pre_bias()
         self._data: ndarray = self._proc.data
         self._truth: ndarray = self._proc.target
         self._mlp: MLP = mlp

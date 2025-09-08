@@ -6,7 +6,7 @@ from typing import Self
 import numpy as np
 from numpy import ndarray
 
-from Neuron import Neuron
+from .neuron import Neuron
 
 
 class Layer:

@@ -53,6 +53,16 @@ class Neuron:
         pass
 
     @staticmethod
+    def identity(x: ndarray) -> ndarray:
+        """Identity function."""
+        return x
+
+    @staticmethod
+    def didentity(x: ndarray) -> ndarray:
+        """Derivative of the identity function."""
+        return np.ones(x.shape)
+
+    @staticmethod
     def ReLU(x: ndarray) -> ndarray:
         """Computes the value of Rectified Linear Unit function in x."""
         return np.where(x > 0, x, 0)
@@ -103,38 +113,49 @@ class Neuron:
     @staticmethod
     def CELF(y: ndarray, x: ndarray) -> ndarray:
         """Cross Entropy Loss Function."""
-        (y, x) = (np.atleast_2d(y), np.atleast_2d(x))
-        return -np.sum(np.log(np.einsum("ij,ij->i", y, x))) / x.shape[0]
+        return -np.sum(
+            np.log(np.einsum("ij,ij->i", y, x)), keepdims=True
+        ) / x.shape[0]
 
     @staticmethod
     def dCELF(y: ndarray, x: ndarray) -> ndarray:
         """Derivative of the Cross Entropy Loss Function."""
-        (y, x) = (np.atleast_2d(y), np.atleast_2d(x))
-        return -np.sum(y / (x + 1e-15)) / x.shape[0]
+        return -np.sum(y / (x + 1e-15), keepdims=True) / x.shape[0]
 
     @staticmethod
     def MSE(y: ndarray, x: ndarray) -> ndarray:
         """Mean Squared Error function."""
-        (y, x) = (np.atleast_2d(y), np.atleast_2d(x))
-        return np.sum((y - x) ** 2) / x.shape[0]
+        return np.sum((y - x) ** 2, keepdims=True) / x.shape[0]
 
     @staticmethod
     def dMSE(y: ndarray, x: ndarray) -> ndarray:
         """Derivative of the Mean Squared Error function."""
-        (y, x) = (np.atleast_2d(y), np.atleast_2d(x))
         return -2 * (y - x) / x.shape[0]
 
     @staticmethod
     def MAE(y: ndarray, x: ndarray) -> ndarray:
         """Mean Absolute Error."""
-        (y, x) = (np.atleast_2d(y), np.atleast_2d(x))
-        return np.sum(np.abs(y - x)) / x.shape[0]
+        return np.sum(np.abs(y - x), keepdims=True) / x.shape[0]
 
     @staticmethod
     def dMAE(y: ndarray, x: ndarray) -> ndarray:
         """Derivative of the Mean Absolute Error."""
-        (y, x) = (np.atleast_2d(y), np.atleast_2d(x))
         return np.sign(x - y) / x.shape[0]
+
+    @staticmethod
+    def MAE_STRONG_0(y: ndarray, x: ndarray) -> ndarray:
+        """Mean Absolute Error with strong weight on 0's."""
+        return np.sum(
+            np.where(y == 0, 2 * np.abs(y - x), np.abs(y - x)), keepdims=True
+        ) / x.shape[0]
+
+    @staticmethod
+    def dMAE_STRONG_0(y: ndarray, x: ndarray) -> ndarray:
+        """Derivative of the Mean Absolute Error STRONG 0."""
+        return np.sum(
+            np.where(y == 0, 2 * np.sign(x - y), np.sign(x - y)),
+            keepdims=True
+        ) / x.shape[0]
 
     @staticmethod
     def bias(x: ndarray) -> ndarray:

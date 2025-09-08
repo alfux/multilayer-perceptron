@@ -6,7 +6,7 @@ import numpy as np
 from numpy import ndarray
 from pandas import DataFrame
 
-from Statistics import Statistics
+from .statistics import Statistics
 
 
 class Processor:

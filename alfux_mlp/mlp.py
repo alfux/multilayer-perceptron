@@ -7,8 +7,8 @@ import numpy as np
 from numpy import ndarray
 import numpy.random as rng
 
-from Layer import Layer, Neuron
-from Processor import Processor
+from .layer import Layer, Neuron
+from .processor import Processor
 
 
 class MLP:

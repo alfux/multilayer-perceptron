@@ -11,7 +11,7 @@ from numpy import ndarray
 import pandas as pd
 from pandas import DataFrame
 
-from MLP import MLP
+from .mlp import MLP, Neuron
 
 
 class MLP3DGraph:
@@ -86,9 +86,10 @@ class MLP3DGraph:
     def verify(self: Self) -> Self:
         """Verifies the score"""
         input_layer = self._set.loc[:, ["Temps (sec)", "FaitJour"]].to_numpy()
-        truth = self._set.loc[:, ["IEA"]].to_numpy()
-        output = self._mlp.eval(input_layer)
-        print("\n\tLoss = ", self._mlp.cost.eval(truth, output), end="\n\n")
+        y = self._set.loc[:, ["IEA"]].to_numpy()
+        f_x = self._mlp.eval(input_layer)
+        print("\n\tLoss RMSE = ", np.sqrt(Neuron.MSE(y, f_x)))
+        print("\n\tLoss MAE = ", Neuron.MAE(y, f_x), end="\n\n")
         return self
 
     def show(self: Self) -> Self:
