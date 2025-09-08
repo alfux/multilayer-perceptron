@@ -10,3 +10,5 @@ venv
 *.npy
 data
 other
+build
+alfux_mlp.egg-info
