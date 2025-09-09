@@ -94,7 +94,13 @@ class Neuron:
 
     @staticmethod
     def softmax(x: ndarray) -> ndarray:
-        """Computes the value of softmax function in <x>."""
+        """Computes the value of softmax function in x.
+
+        Args:
+            x (ndarray): The input vector.
+        Returns:
+            ndarray: The output value.
+        """
         out = np.exp(x)
         if x.ndim > 1:
             return out / np.atleast_2d(np.sum(out, axis=1)).T
