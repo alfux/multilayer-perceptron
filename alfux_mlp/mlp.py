@@ -74,17 +74,35 @@ class MLP:
 
     @property
     def cost(self: "MLP") -> Neuron:
-        """Getter for the cost function."""
+        """Getter for the cost function.
+
+        Args:
+            self ("MLP"): The current instance.
+        Returns:
+            Neuron: The cost function.
+        """
         return self._cost
 
     @property
     def learning_rate(self: "MLP") -> float:
-        """Getter for the learning_rate."""
+        """Getter for the learning_rate.
+
+        Args:
+            self ("MLP"): The current instance.
+        Returns:
+            float: The learning rate.
+        """
         return self._lr
 
     @learning_rate.setter
     def learning_rate(self: "MLP", value: float) -> None:
-        """Setter for the learning_rate."""
+        """Setter for the learning_rate.
+
+        Args:
+            self ("MLP"): The current instance.
+        Returns:
+            None.
+        """
         self._lr = value
 
     def eval(self: "MLP", x: ndarray) -> ndarray:
@@ -124,8 +142,13 @@ class MLP:
 
         The update is based on the model's current cost function.
         Args:
-            <data> is the matrix containing, by row, inputs to train over.
+            truth (ndarray): a 2d matrix of empirical model values as rows.
+            data (ndarray): a 2d matrix containing linked inputs as rows.
+        Returns:
+            None.
         """
+        truth = np.atleast_2d(truth)[:, None, :]
+        data = np.atleast_2d(data)[:, None, :]
         for (i, (y, x)) in enumerate(zip(truth, data)):
             print(f"\rPerforming iteration: {i}", end='')
             self._backpropagate(y, np.fromiter(self._forward_pass(x), ndarray))
@@ -143,7 +166,8 @@ class MLP:
         Returns:
             None
         """
-        dk = self._layers[-1].wdiff(input[-2]) @ self._cost.diff(y, input[-1])
+        dk = self._layers[-1].wdiff(input[-2])
+        dk = dk @ self._cost.diff(y, input[-1]).T
         dk = np.atleast_1d(dk)
         self._update_layer(-1, np.outer(dk, input[-2]))
         for i in range(len(self._layers) - 2, -1, -1):

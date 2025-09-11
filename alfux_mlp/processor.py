@@ -74,7 +74,8 @@ class Processor:
         """Transform the label field in a vectorized equivalent."""
         if self._unique is None:
             (uni, inv) = np.unique(self._target, return_inverse=True)
-            self._target = np.eye(len(uni))[inv]
+            self._target = np.eye(len(uni))[inv.flatten()]
+            self._target = DataFrame(self._target)
             self._unique = uni
         return self
 

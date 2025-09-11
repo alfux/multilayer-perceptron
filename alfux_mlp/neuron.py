@@ -24,8 +24,8 @@ class Neuron:
             df must be the derivative of f. If f is a string, df is ignored.
         """
         if isinstance(f, str):
-            self.eval: Callable = eval("Neuron." + f)
-            self.diff: Callable = eval("Neuron.d" + f)
+            self.eval: Callable = getattr(Neuron, f)
+            self.diff: Callable = getattr(Neuron, 'd' + f)
         else:
             self.eval: Callable = f
             self.diff: Callable = df
@@ -120,13 +120,13 @@ class Neuron:
     def CELF(y: ndarray, x: ndarray) -> ndarray:
         """Cross Entropy Loss Function."""
         return -np.sum(
-            np.log(np.einsum("ij,ij->i", y, x)), keepdims=True
+            np.log(np.einsum("ij,ij->i", y, x)), keepdims=True, axis=0
         ) / x.shape[0]
 
     @staticmethod
     def dCELF(y: ndarray, x: ndarray) -> ndarray:
         """Derivative of the Cross Entropy Loss Function."""
-        return -np.sum(y / (x + 1e-15), keepdims=True) / x.shape[0]
+        return -np.sum(y / (x + 1e-15), keepdims=True, axis=0) / x.shape[0]
 
     @staticmethod
     def MSE(y: ndarray, x: ndarray) -> ndarray:

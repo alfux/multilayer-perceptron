@@ -44,6 +44,8 @@ class Teacher:
             self._proc.post_normalize(normal)
         elif post == "standardize":
             self._proc.post_standardize()
+        elif post == "onehot":
+            self._proc.onehot()
         if bias:
             self._proc.pre_bias()
         self._data: ndarray = self._proc.data

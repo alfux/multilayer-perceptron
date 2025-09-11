@@ -98,15 +98,18 @@ class Layer:
         return x.T
 
     def _wdiff(self: Self, x: ndarray) -> ndarray:
-        """Weighted derivative function of the layer. Computes differential in
-        <self._weigths> @ <x> as a multi-neural layer.
+        """Weighted derivative function of the layer.
 
+        Computes differential in self._weigths @ x as a multi-neural layer.
         By construction of the layer, the differential is a diagonal matrix.
         Args:
-            If weights are a (l, m) matrix, <x> is expected to have
-            length m.
+            y (ndarray): The empirical model values.
+            x (ndarray): The empirical input datas. If weights are a (l, m)
+                matrix, x is expected to have length m.
+        Returns:
+            ndarray: The differential of the layer in x.
         """
-        x = self._matrix @ x
+        x = self._matrix @ x.T
         out = np.zeros((len(self._matrix), len(self._matrix)), float)
         for i in range(len(self._matrix)):
             out[i, i] = self._neurons[i].diff(x[i])
