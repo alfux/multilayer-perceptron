@@ -77,6 +77,8 @@ class Processor:
             self._target = np.eye(len(uni))[inv.flatten()]
             self._target = DataFrame(self._target)
             self._unique = uni
+            new_postprocess = [(Processor.revonehot, [uni])]
+            self._postprocess = new_postprocess + self._postprocess
         return self
 
     def pre_standardize(self: Self) -> Self:
@@ -214,6 +216,19 @@ class Processor:
             The unnormalized output
         """
         return min + span * (x - b[0]) / (b[1] - b[0])
+
+    @staticmethod
+    def revonehot(uniques: ndarray, x: ndarray) -> ndarray:
+        """Reverse the onehot transformation of a classification.
+
+        Args:
+            uniques (ndarray): The unique item list.
+            x (ndarray): The onehot encoded values.
+        Returns:
+            ndarray: The corresponding unique of each element of x.
+        """
+        print(x)
+        return uniques[np.argmax(x, axis=1)]
 
     @staticmethod
     def add_bias(x: ndarray) -> ndarray:

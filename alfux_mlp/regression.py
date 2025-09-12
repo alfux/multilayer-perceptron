@@ -43,7 +43,7 @@ class Regression:
         activ = Neuron(self._config["activ"])
         cost = Neuron(self._config["cost"])
         layers = list(Regression.gen_layers(self._config["layers"], activ))
-        mlp = MLP(layers, cost)
+        mlp = MLP(layers, cost, learning_rate=self._config["learning_rate"])
         teacher = Teacher(
             self._data, self._config["truth"], self._config["outnorm"], mlp,
             self._config.get("pre", None), self._config.get("post", None)
