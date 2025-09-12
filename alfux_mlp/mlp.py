@@ -12,29 +12,27 @@ from .processor import Processor
 
 
 class MLP:
-    """Configurable Multilayer (or Singlelayer) Perceptron
+    """Configurable multilayer (or single-layer) perceptron.
 
-    This class is expected to be used with full knowledge of how it works.
-    There isn't any verification or security of any kind outside __init__
-    in order to reduce time and operations complexities.
+    Minimal validation is performed for performance. Use with knowledge of
+    expected shapes and types.
     """
 
     def __init__(self: "MLP", layers: list, cost: Neuron, **kw: dict) -> None:
-        """Creates a single or multilayer perceptron.
+        """Create a single or multilayer perceptron.
 
         Args:
-            layers is a list of Layer objects. They represent hidden layers
-            and the output layer of the network.
-            cost is the cost function used to train the model and measure
-            its performance.
-        Keyword arguments <kw>:
-            learning_rate is the speed of learning, the lower the learning
-            rate, the slower the convergence. But a higher learning rate may
-            lead complete to divergence.
-            preprocess is the preprocessing list of functions used over the
-            training dataset.
-            postprocess is the postprocessing list of functions used over the
-            training output.
+            layers (list[Layer]): Hidden layers and output layer.
+            cost (Neuron): Cost (loss) function neuron.
+            **kw: Optional parameters.
+
+        Keyword Args:
+            learning_rate (float): Learning rate. Lower is slower but stable;
+                too high may diverge. Defaults to ``1e-3``.
+            b1 (float): Adam first moment decay. Defaults to ``0.9``.
+            b2 (float): Adam second moment decay. Defaults to ``0.999``.
+            preprocess (list[Callable]): Preprocessing pipeline.
+            postprocess (list[Callable]): Postprocessing pipeline.
         """
         self._layers: list[Layer] = layers
         self._cost: Neuron = cost
@@ -47,73 +45,65 @@ class MLP:
         self.postprocess = kw.get("postprocess", [])
 
     def __len__(self: "MLP") -> int:
-        """Returns the number of layers in the MLP."""
+        """Return the number of layers in the MLP."""
         return len(self._layers)
 
     @property
     def preprocess(self: "MLP") -> Callable:
-        """Getter for the preprocessor."""
+        """Get the compiled preprocessing function."""
         return self._prepro
 
     @preprocess.setter
     def preprocess(self: "MLP", value: list[Callable]) -> None:
-        """Setter for the preprocessor."""
+        """Set the preprocessing steps and compile the pipeline."""
         self._save_prepro = value
         self._prepro = Processor.compile_processes(value)
 
     @property
     def postprocess(self: "MLP") -> Callable:
-        """Getter for the postprocessor."""
+        """Get the compiled postprocessing function."""
         return self._postpro
 
     @postprocess.setter
     def postprocess(self: "MLP", value: list[Callable]) -> None:
-        """Setter for the postprocessor."""
+        """Set the postprocessing steps and compile the pipeline."""
         self._save_postpro = value
         self._postpro = Processor.compile_processes(value)
 
     @property
     def cost(self: "MLP") -> Neuron:
-        """Getter for the cost function.
+        """Get the cost (loss) function neuron.
 
-        Args:
-            self ("MLP"): The current instance.
         Returns:
-            Neuron: The cost function.
+            Neuron: Cost neuron.
         """
         return self._cost
 
     @property
     def learning_rate(self: "MLP") -> float:
-        """Getter for the learning_rate.
+        """Get the learning rate.
 
-        Args:
-            self ("MLP"): The current instance.
         Returns:
-            float: The learning rate.
+            float: Current learning rate.
         """
         return self._lr
 
     @learning_rate.setter
     def learning_rate(self: "MLP", value: float) -> None:
-        """Setter for the learning_rate.
-
-        Args:
-            self ("MLP"): The current instance.
-        Returns:
-            None.
-        """
+        """Set the learning rate."""
         self._lr = value
 
     def eval(self: "MLP", x: ndarray) -> ndarray:
-        """Evaluates the MLP's output.
+        """Evaluate the MLP output.
 
-        This function is dynamically allocated depending on the presence of a
-        preprocess function or not.
+        Applies the compiled preprocessing, forward-pass through layers, and
+        compiled postprocessing.
+
         Args:
-            x is the input of the layer.
+            x (ndarray): Input data matrix.
+
         Returns:
-            The output of the last layer.
+            ndarray: Network output.
         """
         x = self._prepro(x)
         for layer in self._layers:
@@ -121,12 +111,13 @@ class MLP:
         return self._postpro(x)
 
     def save(self: "MLP", path: str = "./default.npy") -> "MLP":
-        """Saves the MLP in a numpy file.
+        """Save the MLP to a NumPy file.
 
         Args:
-            path is the save file path
+            path (str): Output file path. Defaults to ``"./default.npy"``.
+
         Returns:
-            The current instance
+            MLP: The current instance.
         """
         mlp = {
             "layers": self._layers, "cost": self._cost,
@@ -138,14 +129,13 @@ class MLP:
         return self
 
     def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
-        """Updates the model by one pass of stochastic gradient descent.
+        """Perform one epoch of stochastic gradient descent.
 
-        The update is based on the model's current cost function.
+        Updates weights using the current cost function and Adam optimizer.
+
         Args:
-            truth (ndarray): a 2d matrix of empirical model values as rows.
-            data (ndarray): a 2d matrix containing linked inputs as rows.
-        Returns:
-            None.
+            truth (ndarray): Empirical target values (rows are samples).
+            data (ndarray): Input samples (rows).
         """
         truth = np.atleast_2d(truth)[:, None, :]
         data = np.atleast_2d(data)[:, None, :]
@@ -156,15 +146,12 @@ class MLP:
             self._pb2 *= self._b2
 
     def _backpropagate(self: "MLP", y: ndarray, input: ndarray) -> None:
-        """Updates matrices with backpropagation.
+        """Backpropagate gradients and update internal moments.
 
         Args:
-            <input> is the chain of input / output in the network.
-            First element is the initial input.
-            Last element is the last layer's output.
-            <y> is the truth values to compare against in the loss function.
-        Returns:
-            None
+            y (ndarray): Truth values.
+            input (ndarray): Sequence of inputs/outputs per layer, from input
+                to final output.
         """
         dk = self._layers[-1].wdiff(input[-2])
         dk = dk @ self._cost.diff(y, input[-1]).T
@@ -175,14 +162,11 @@ class MLP:
             self._update_layer(i, np.outer(dk, input[i]))
 
     def _update_layer(self: "MLP", i: int, gradient: ndarray) -> None:
-        """Updates layer with ADAM momentum.
+        """Update a layer's weights using Adam.
 
         Args:
-            <i> index of the layer.
-            <gradient> is the gradient of the composition from loss function up
-            until layer <i>.
-        Returns:
-            None
+            i (int): Layer index.
+            gradient (ndarray): Gradient for this layer.
         """
         self._m[i] = self._b1 * self._m[i] + (1 - self._b1) * gradient
         self._v[i] = self._b2 * self._v[i] + (1 - self._b2) * gradient ** 2
@@ -191,7 +175,7 @@ class MLP:
         self._layers[i].W -= self._lr * m / v
 
     def _forward_pass(self: "MLP", x: ndarray) -> Generator:
-        """Generates an array with inputs of each layer (cost included)."""
+        """Yield inputs for each layer including the final output."""
         for layer in self._layers:
             yield x
             x = layer.eval(x)
@@ -199,12 +183,13 @@ class MLP:
 
     @staticmethod
     def load(path: str) -> "MLP":
-        """Loads an MLP
+        """Load an MLP from a NumPy file.
 
         Args:
-            path is the path to the file to load
+            path (str): Path to the ``.npy`` file.
+
         Returns:
-            The loaded instance of the MLP
+            MLP: Loaded instance.
         """
         mlp = MLP(**np.load(path, allow_pickle=True).item())
         print(f"{path} loaded successfuly !")
@@ -212,7 +197,11 @@ class MLP:
 
 
 def main() -> int:
-    """MLP sample output test."""
+    """Sample output test for the MLP.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")

@@ -9,10 +9,16 @@ from pandas import DataFrame
 
 
 class PairPlot:
-    """Generates a pair plot from a Dataframe."""
+    """Generate a pair plot from a DataFrame."""
 
     def __init__(self: Self, data: DataFrame, **kwargs: dict):
-        """Processes the dataframe and creates the pair plot."""
+        """Process the DataFrame and create the pair plot.
+
+        Args:
+            data (DataFrame): Input data.
+            **kwargs: Either ``remap`` mapping, or ``trait`` and ``drop``
+                configuration to preprocess columns.
+        """
         if "remap" in kwargs:
             self._data = data
             self._remap = kwargs["remap"]
@@ -29,7 +35,7 @@ class PairPlot:
 
     def _pre_process(self: Self, data: DataFrame, trait: int,
                      drop: list) -> DataFrame:
-        """Renames dataframe's headers."""
+        """Rename DataFrame headers and select numeric columns."""
         traits = data[trait]
         head = {k: str(v) for (k, v) in zip(data.columns, data.columns)}
         data.rename(head, axis=1, inplace=True)
@@ -40,7 +46,7 @@ class PairPlot:
         return data.rename(head, axis=1)
 
     def _generate_pair_plot(self: Self) -> None:
-        """Generates all subplots for the pair plot."""
+        """Generate all subplots for the pair plot."""
         labels = self._data.columns[1:]
         mosaic = [[f"{i}/{j}" for j in labels] for i in labels]
         plots: dict[str, Axes] = self._fig.subplot_mosaic(mosaic)
@@ -54,7 +60,7 @@ class PairPlot:
                          loc="upper center")
 
     def _scatter_plot(self: Self, plot: Axes, i: int, j: int) -> None:
-        """Generates a scatter plot of characters i against j."""
+        """Generate a scatter plot of feature ``i`` against ``j``."""
         for trait in self._traits:
             selectx = list(self._select(j, trait))
             selecty = list(self._select(i, trait))
@@ -70,7 +76,7 @@ class PairPlot:
             plot.yaxis.set_label_position("left")
 
     def _histogram(self: Self, plot: Axes, i: int) -> None:
-        """Generates a histogram of character i."""
+        """Generate a histogram of feature ``i``."""
         for trait in self._traits:
             selected = list(self._select(i, trait))
             plot.hist(selected, bins=100)
@@ -83,18 +89,18 @@ class PairPlot:
             plot.yaxis.set_label_position("left")
 
     def _select(self: Self, column: int, trait: str) -> Generator:
-        """Iterable selecting only values in column corresponding to trait."""
+        """Iterate values in ``column`` corresponding to the given trait."""
         for i in range(self._data.shape[0]):
             if self._data.at[i, 0] == trait:
                 yield self._data.at[i, column]
 
     def show(self: Self) -> None:
-        """Shows the pair plot."""
+        """Show the pair plot."""
         plt.show()
 
 
 def main() -> None:
-    """Displays a pair plot from the given csv file."""
+    """Display a pair plot from the given CSV file."""
     try:
         parser = arg.ArgumentParser(description="Visualizes csv dataset")
         parser.add_argument("data", help="csv dataset")

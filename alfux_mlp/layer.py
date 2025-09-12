@@ -10,21 +10,19 @@ from .neuron import Neuron
 
 
 class Layer:
-    """Layer of neurons of a neural network. It is a vector of neurons.
+    """Layer of neurons in a neural network.
 
-    This class is expected to be used with full knowledge of how it works.
-    There isn't any verification or security of any kind outside of __init__
-    in order to reduce time and operations complexities.
+    Represents a vector of neurons with an associated weight matrix. This
+    class assumes correct inputs and does minimal validation to reduce
+    complexity and overhead.
     """
 
     def __init__(self: Self, neurons: list[Neuron], weights: ndarray) -> None:
-        """Creates the layer based on neurons list and weights matrix.
+        """Initialize a layer with neurons and weights.
 
-        Arguments can be provided as strings, to bet passed to eval().
         Args:
-            <neurons> is a Neuron objects list used as neurons in the layer.
-            <weights> is a matrix with lines equal to the number of neurons and
-            columns equal to the number of input values.
+            neurons (list[Neuron]): Neurons in the layer.
+            weights (ndarray): Weight matrix shaped ``(n_neurons, n_inputs)``.
         """
         self._matrix: ndarray = weights
         match len(neurons):
@@ -43,54 +41,60 @@ class Layer:
                 self.wdiff = self._wdiff
 
     def __len__(self: Self) -> int:
-        """Returns the length of the layer."""
+        """Return the number of neurons in the layer."""
         return len(self._matrix)
 
     @property
     def W(self: Self) -> ndarray:
-        """Get the matrix of weights."""
+        """Get the weight matrix."""
         return self._matrix
 
     @W.setter
     def W(self: Self, value: ndarray) -> None:
-        """Set the matrix of weights."""
+        """Set the weight matrix."""
         self._matrix = value
 
     def eval(self: Self, x: ndarray) -> ndarray:
-        """Computes layer's weighted output.
+        """Compute the layer output.
 
         Args:
-            <x> is the input vector. It is first multiplied by <self._matrix>.
+            x (ndarray): Input vector or batch. Multiplied by the weight
+                matrix then passed through neuron activations.
         """
         pass
 
     def _vect_eval(self: Self, x: ndarray) -> ndarray:
-        """Computes layer's weighted output as a single-neural layer.
+        """Compute output for a single-neuron layer.
 
         Args:
-            If weights are a (l, m) matrix, <x> is expected to have
-            length m.
+            x (ndarray): Input of length ``m`` for weights shaped ``(l, m)``.
+
+        Returns:
+            ndarray: Activated output.
         """
         x = (self._matrix @ x.T).T
         return self._neurons.eval(x)
 
     def _vect_wdiff(self: Self, x: ndarray) -> ndarray:
-        """Weighted derivative function of the layer. Computes differential in
-        <self._weigths> @ <x> as a single-neural layer.
+        """Compute weighted derivative for a single-neuron layer.
 
         Args:
-            If weights are a (l, m) matrix, <x> is expected to have
-            length m.
+            x (ndarray): Input of length ``m`` for weights shaped ``(l, m)``.
+
+        Returns:
+            ndarray: Derivative evaluated at ``W @ x``.
         """
         x = (self._matrix @ x.T).T
         return self._neurons.diff(x)
 
     def _eval(self: Self, x: ndarray) -> ndarray:
-        """Computes layer's weighted output as a multi-neural layer.
+        """Compute output for a multi-neuron layer.
 
         Args:
-            If weights are a (l, m) matrix, <x> is expected to have
-            length m.
+            x (ndarray): Input of length ``m`` for weights shaped ``(l, m)``.
+
+        Returns:
+            ndarray: Activated output with shape ``(batch, l)``.
         """
         x = self._matrix @ x.T
         for i in range(x.shape[0]):
@@ -98,16 +102,16 @@ class Layer:
         return x.T
 
     def _wdiff(self: Self, x: ndarray) -> ndarray:
-        """Weighted derivative function of the layer.
+        """Compute weighted derivative for a multi-neuron layer.
 
-        Computes differential in self._weigths @ x as a multi-neural layer.
-        By construction of the layer, the differential is a diagonal matrix.
+        Computes the derivative of ``W @ x`` evaluated by each neuron's
+        derivative. By construction, the result is a diagonal matrix.
+
         Args:
-            y (ndarray): The empirical model values.
-            x (ndarray): The empirical input datas. If weights are a (l, m)
-                matrix, x is expected to have length m.
+            x (ndarray): Input of length ``m`` for weights shaped ``(l, m)``.
+
         Returns:
-            ndarray: The differential of the layer in x.
+            ndarray: Diagonal matrix of derivatives with shape ``(l, l)``.
         """
         x = self._matrix @ x.T
         out = np.zeros((len(self._matrix), len(self._matrix)), float)
@@ -117,7 +121,11 @@ class Layer:
 
 
 def main() -> int:
-    """Displays the output of a layer."""
+    """Display an example layer output.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")

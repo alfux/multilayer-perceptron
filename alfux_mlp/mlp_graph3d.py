@@ -15,7 +15,7 @@ from .mlp import MLP, Neuron
 
 
 class MLP3DGraph:
-    """Used to plot a 3D Graph projection of the MLP against training set."""
+    """Plot a 3D surface of an MLP against a training set."""
 
     def __init__(
             self: Self, mlp: str | MLP, training: str | DataFrame,
@@ -23,17 +23,21 @@ class MLP3DGraph:
             figsize: tuple = (15, 9), alpha: float = 0.75,
             xlim: list[float] = [0, 90000], ylim: list[float] = [0, 5000]
     ) -> None:
-        """Initializes the 3D Graph projection.
+        """Initialize the 3D graph projection.
 
-        <b>Args:</b>
-            <b>mlp</b> is the path of the MLP or the MLP
-            <b>training</b> is the path of the training set or the training set
-            <b>frac</b> is the ratio of the sample
-            <b>title</b> is the window title
-            <b>grid</b> is the mesh smoothness
-            <b>figsize</b> is the window size
-        <b>Returns:</b>
-            None
+        Args:
+            mlp (str | MLP): Path to a saved MLP or an MLP instance.
+            training (str | DataFrame): Path to training CSV or DataFrame.
+            frac (float, optional): Sample ratio. Defaults to ``1``.
+            title (str, optional): Figure title. Defaults to ``"Graph"``.
+            grid (int, optional): Mesh smoothness (grid size). Defaults to
+                ``100``.
+            figsize (tuple, optional): Figure size. Defaults to ``(15, 9)``.
+            alpha (float, optional): Surface alpha. Defaults to ``0.75``.
+            xlim (list[float], optional): X axis limits. Defaults to
+                ``[0, 90000]``.
+            ylim (list[float], optional): Y axis limits. Defaults to
+                ``[0, 5000]``.
         """
         self._fig: Figure = plt.figure(figsize=figsize)
         self._ax: Axes = self._fig.add_subplot(111, projection="3d")
@@ -57,10 +61,10 @@ class MLP3DGraph:
         (self._xlim, self._ylim) = (xlim, ylim)
 
     def plot_mlp(self: Self) -> Self:
-        """Plots the mlp's output.
+        """Plot the MLP surface over the grid.
 
-        <b>Returns:</b>
-            The current instance
+        Returns:
+            MLP3DGraph: The current instance.
         """
         x = np.linspace(self._xlim[0], self._xlim[1], self._grid)
         y = np.linspace(self._ylim[0], self._ylim[1], self._grid)
@@ -73,10 +77,10 @@ class MLP3DGraph:
         return self
 
     def plot_training_set(self: Self) -> Self:
-        """Plots the training set values.
+        """Plot the sampled training set values.
 
-        <b>Returns:</b>
-            The current instance
+        Returns:
+            MLP3DGraph: The current instance.
         """
         grid = int(np.ceil(len(self._x) / self._grid))
         (x, y, z) = (self._x[::grid], self._y[::grid], self._z[::grid])
@@ -84,7 +88,7 @@ class MLP3DGraph:
         return self
 
     def verify(self: Self) -> Self:
-        """Verifies the score"""
+        """Compute and print verification scores (RMSE and MAE)."""
         input_layer = self._set.loc[:, ["Temps (sec)", "FaitJour"]].to_numpy()
         y = self._set.loc[:, ["IEA"]].to_numpy()
         f_x = self._mlp.eval(input_layer)
@@ -93,13 +97,17 @@ class MLP3DGraph:
         return self
 
     def show(self: Self) -> Self:
-        """Shows the plot, callback to plt.show()"""
+        """Show the plot (wrapper around ``plt.show()``)."""
         plt.show()
         return self
 
 
 def main() -> int:
-    """Plot the model's surface against the training datas."""
+    """Plot the model's surface against the training data.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")

@@ -8,22 +8,34 @@ from pandas import DataFrame, Series
 
 
 class Statistics:
-    """Computes different statistics on dataset."""
+    """Compute basic descriptive statistics for a dataset."""
 
     def __init__(self: Self, data: DataFrame) -> None:
-        """Process dataset"""
+        """Compute statistics for the provided DataFrame.
+
+        Args:
+            data (DataFrame): Input data with numeric columns.
+        """
         self._fields = ["N", "Mean", "Var", "Std", "Min",
                         "25%", "50%", "75%", "Max"]
         self.stats = DataFrame(self._generate_stats(data)).transpose()
         self.stats.columns = data.columns
 
     def _generate_stats(self: Self, data: DataFrame) -> Generator:
-        """Iterable over stat Series computed from data."""
+        """Iterate over per-column statistics series."""
         for x in data.columns:
             yield self._compute(data[x])
 
     def _compute(self: Self, column: Series) -> Series:
-        """Computes stats on the column's data and return it as a Series"""
+        """Compute statistics on a single column.
+
+        Args:
+            column (Series): Column to analyze.
+
+        Returns:
+            Series: Statistics with fields ``N, Mean, Var, Std, Min, 25%,
+            50%, 75%, Max``.
+        """
         stat = [0] * len(self._fields)
         column = column.to_numpy(dtype=float)
         column = np.sort(column[~np.isnan(column)])
@@ -40,7 +52,7 @@ class Statistics:
         return Series(stat, self._fields)
 
     def _percentile(self: Self, sorted: list, p: float) -> float:
-        """Computes percentile of sorted list."""
+        """Compute the percentile of a sorted list."""
         p = (len(sorted) - 1) * np.clip(p, 0, 100) / 100
         r = p % 1
         p = int(p - r)
@@ -50,7 +62,11 @@ class Statistics:
 
 
 def main() -> int:
-    """Prints a description of numerical values frome csv file."""
+    """Print descriptive statistics of numeric columns in a CSV file.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         parser = arg.ArgumentParser(description=main.__doc__)
         parser.add_argument("data", help="csv dataset")

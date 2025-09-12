@@ -10,13 +10,14 @@ import pandas as pd
 from pandas import DataFrame, Series
 
 
-def get_args(description: str = '') -> Namespace:
-    """Manages program arguments.
+def get_args(description: str = "") -> Namespace:
+    """Parse command-line arguments.
 
     Args:
-        ::description: is the program helper description.
+        description (str): Program help description shown in ``--help``.
+
     Returns:
-        A Namespace of the arguments.
+        Namespace: Parsed CLI arguments.
     """
     av = arg.ArgumentParser(description=description)
     av.add_argument("--debug", action="store_true", help="debug mode")
@@ -29,7 +30,14 @@ def get_args(description: str = '') -> Namespace:
 
 
 def to_numeric(x: Any) -> float:
-    """Converts x to a float."""
+    """Convert a value to ``float``.
+
+    Args:
+        x (Any): Value to convert.
+
+    Returns:
+        float: Converted value or ``nan`` on failure.
+    """
     try:
         return float(x)
     except Exception:
@@ -37,19 +45,30 @@ def to_numeric(x: Any) -> float:
 
 
 def series_to_numeric(x: Series) -> Series:
-    """Converts a Series to numeric types"""
+    """Convert a pandas Series to numeric values.
+
+    Non-convertible values become ``NaN``.
+
+    Args:
+        x (Series): Input series.
+
+    Returns:
+        Series: Numeric series.
+    """
     x.apply(to_numeric)
     return x
 
 
 def z_score(dataframe: DataFrame, threshold: float = 3.0) -> DataFrame:
-    """Remove outliers with z-score method.
+    """Remove outliers using the z-score method.
 
     Args:
-        dataframe (DataFrame): A dataframe to filter
-        threshold (float): The z-score exclusion threshold (2 or 3 typically)
+        dataframe (DataFrame): DataFrame to filter.
+        threshold (float, optional): Z-score exclusion threshold
+            (typically 2–3). Defaults to ``3.0``.
+
     Returns:
-        DataFrame: The filtered data.
+        DataFrame: Filtered DataFrame without detected outliers.
     """
     df = dataframe.copy()
     prev_shape = None
@@ -60,7 +79,11 @@ def z_score(dataframe: DataFrame, threshold: float = 3.0) -> DataFrame:
 
 
 def main() -> int:
-    """Condensate multiple csv files of a directory into one set."""
+    """Concatenate multiple CSV files from a directory into one dataset.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         av = get_args(main.__doc__)
         data = [pd.read_csv(av.path + "/" + f) for f in os.listdir(av.path)]

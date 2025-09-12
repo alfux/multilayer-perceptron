@@ -7,13 +7,14 @@ from alfux_mlp import MLP
 import pandas as pd
 
 
-def get_args(description: str = '') -> Namespace:
-    """Manages program arguments.
+def get_args(description: str = "") -> Namespace:
+    """Parse command-line arguments.
 
     Args:
-        description (str): is the program helper description.
+        description (str): Program help description shown in ``--help``.
+
     Returns:
-        Namespace: The arguments.
+        Namespace: Parsed CLI arguments.
     """
     av = arg.ArgumentParser(description=description)
     av.add_argument("model", type=str, help="Path of the model's file.")
@@ -25,7 +26,11 @@ def get_args(description: str = '') -> Namespace:
 
 
 def main() -> int:
-    """Evaluate a model on a given dataset."""
+    """Evaluate a saved model on a dataset.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         av = get_args(main.__doc__)
         FORMAT = "%(asctime)s | %(levelname)s - %(message)s"

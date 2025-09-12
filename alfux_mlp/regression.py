@@ -1,4 +1,4 @@
-"""Program creating neural network based on JSON parameters."""
+"""Create and train neural networks from JSON configurations."""
 import argparse as arg
 from argparse import Namespace
 import json
@@ -13,16 +13,18 @@ from .teacher import Teacher, MLP, Layer, Neuron
 
 
 class Regression:
-    """Regressions on a dataset based on a configuration file."""
+    """Train regressors on a dataset from a configuration.
+
+    A configuration specifies the dataset, preprocessing, model layout, and
+    training parameters.
+    """
 
     def __init__(self: "Regression", config: dict) -> None:
-        """Initialize a Regression object based on a config JSON object.
+        """Initialize from a configuration object.
 
         Args:
-            self ("Regression"): The current instance.
-            config (dict): The configuration object.
-        Returns:
-            None.
+            config (dict): Configuration mapping. Keys include ``file``,
+                ``header``, optional ``drops``, and other training settings.
         """
         if config["header"]:
             self._data = pd.read_csv(config["file"])
@@ -33,12 +35,10 @@ class Regression:
         self._config = config
 
     def train(self: "Regression") -> MLP:
-        """Generate a trained model based on the loaded configuration.
+        """Train a model based on the loaded configuration.
 
-        Args:
-            self ("Regression"): The current instance.
         Returns:
-            MLP: The trained model.
+            MLP: The trained model instance.
         """
         activ = Neuron(self._config["activ"])
         cost = Neuron(self._config["cost"])
@@ -53,13 +53,14 @@ class Regression:
 
     @staticmethod
     def gen_layers(layers: list[int], neuron: Neuron) -> Generator:
-        """Generate an untrained MLP object based on configuration.
+        """Yield untrained layers according to the configuration.
 
         Args:
-            layers (list[int]): A list representing each layers.
-            neuron (Neuron): The activation function of the neural network.
+            layers (list[int]): Layer sizes from input to output.
+            neuron (Neuron): Activation function to use for hidden/output.
+
         Yields:
-            Layer: The last constructed layer.
+            Layer: Each constructed layer in order.
         """
         bias = [Neuron("bias")]
         neuron = [neuron]
@@ -71,13 +72,14 @@ class Regression:
         yield Layer(neuron * layers[-1], matrix)
 
 
-def get_args(description: str = '') -> Namespace:
-    """Manages program arguments.
+def get_args(description: str = "") -> Namespace:
+    """Parse command-line arguments.
 
     Args:
-        ::description: is the program helper description.
+        description (str): Program help description shown in ``--help``.
+
     Returns:
-        A Namespace of the arguments.
+        Namespace: Parsed CLI arguments.
     """
     av = arg.ArgumentParser(description=description)
     av.add_argument("--debug", action="store_true", help="traceback mode")
@@ -86,23 +88,29 @@ def get_args(description: str = '') -> Namespace:
 
 
 def main() -> int:
-    """Uses MLP model to perform a regression.
+    """Train and save MLP regressors defined in a JSON file.
 
-    Configuration file as a JSON:
-    \n{
-    \t"file": "Path/to/the/trainning/file.csv",
-    \t"truth": "Column name of the feature to predict/simulate",
-    \t"drops": "Optionally drop features from the dataset.",
-    \t"layers": ["List of integers representing layers from input to output"],
-    \t"epoch": "Number of trainning epoch as int",
-    \t"sample": "Fraction of sample to use at each epoch as float",
-    \t"outnorm": ["Two floats representing an interval for normalization"],
-    \t"save": "path/to/save.npy",
-    \t"activ": "Neuron function's name from the Neuron class",
-    \t"cost": "Cost function's name from the Neuron class"
-    \t"pre": "type of data regularization (normalize/standardize)"
-    \t"post": "type of data post processing (normalize/standardize/onehot)"
-    }
+    Examples:
+        JSON configuration structure::
+
+            {
+                "file": "path/to/training.csv",
+                "truth": "target_column_name",
+                "drops": ["optional", "columns", "to", "drop"],
+                "header": true,
+                "layers": [n_input, hidden1, ..., n_output],
+                "epoch": 100,
+                "sample": 0.5,
+                "outnorm": [0.0, 1.0],
+                "save": "path/to/model.npy",
+                "activ": "<Neuron activation name>",
+                "cost": "<Neuron cost name>",
+                "pre": "normalize|standardize",
+                "post": "normalize|standardize|onehot"
+            }
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
     """
     try:
         av = get_args(main.__doc__)

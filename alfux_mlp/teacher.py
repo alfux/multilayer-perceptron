@@ -14,10 +14,10 @@ from .processor import Processor
 
 
 class Teacher:
-    """This class aims to find the best suited MLP to given parameters."""
+    """Train an MLP using provided data and configuration."""
 
     class BadTeacher(Exception):
-        """Teacher specific exceptions."""
+        """Teacher-specific exception type."""
         pass
 
     def __init__(
@@ -25,15 +25,21 @@ class Teacher:
             normal: list = [0, 1], mlp: MLP = None, pre: str = "normalize",
             post: str = "normalize", bias: bool = True
     ) -> None:
-        """<b>Creates an MLP Teacher</b>.
+        """Create a Teacher for an MLP.
 
-        <b>Args:</b>
-            <b>book</b> is a DataFrame containing the datas and target.
-            <b>target</b> is the column containing the target values.
-            <b>normal</b> is the normalization interval.
-            <b>mlp</b> is a MLP instance of a MultilayerPerceptron.
-        <b>Returns:</b>
-            Nothing
+        Args:
+            book (DataFrame): DataFrame containing features and target.
+            target (str | int): Column containing target values.
+            normal (list, optional): Normalization interval. Defaults to
+                ``[0, 1]``.
+            mlp (MLP | None, optional): MLP to train. Defaults to ``None``.
+            pre (str, optional): Preprocess type: ``"normalize"`` or
+                ``"standardize"``. Defaults to ``"normalize"``.
+            post (str, optional): Postprocess type: ``"normalize"``,
+                ``"standardize"`` or ``"onehot"``. Defaults to
+                ``"normalize"``.
+            bias (bool, optional): Whether to add a bias feature. Defaults to
+                ``True``.
         """
         self._proc = Processor(book, target)
         if pre == "normalize":
@@ -54,22 +60,28 @@ class Teacher:
 
     @property
     def mlp(self: Self) -> MLP:
-        """Getter for the mlp model."""
+        """Get the underlying MLP model."""
         return self._mlp
 
     @mlp.setter
     def mlp(self: Self, value: MLP) -> None:
-        """Setter for the mlp model."""
+        """Set the underlying MLP model."""
         self._mlp = value
 
     def teach(
         self: Self, epoch: int, time: bool = False, frac: float = 1
     ) -> Self:
-        """Teaches the lesson to the internal MLP.
+        """Train the internal MLP for a number of epochs.
 
         Args:
-            <epoch> is the number of epoch to realise with the training. When
-            given <epoch> is 0 or less, precision is used to end the training.
+            epoch (int): Number of training epochs.
+            time (bool, optional): Print training duration. Defaults to
+                ``False``.
+            frac (float, optional): Sample fraction per epoch.
+                Defaults to ``1``.
+
+        Returns:
+            Teacher: The current instance.
         """
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
@@ -84,12 +96,13 @@ class Teacher:
         return self
 
     def _sample(self: Self, frac: float) -> tuple[ndarray, ndarray]:
-        """Selects a random sample of the data.
+        """Select a random sample of the data.
 
         Args:
-            frac is a proportion of the total available datas.
+            frac (float): Proportion of the dataset to sample.
+
         Returns:
-            A tuple containing the learned truth array and the data array.
+            tuple[ndarray, ndarray]: ``(truth, data)`` mini-batch.
         """
         size = np.int64(np.round(np.clip(frac, 0, 1) * self._data.shape[0]))
         idx = np.random.choice(self._data.shape[0], size=size, replace=False)
@@ -97,7 +110,14 @@ class Teacher:
 
 
 def basic_regressor(nx: int) -> MLP:
-    """Generates a basic MLP regressor based on the given DataFrame."""
+    """Generate a basic MLP regressor with decreasing layer sizes.
+
+    Args:
+        nx (int): Number of inputs including bias.
+
+    Returns:
+        MLP: Configured MLP instance.
+    """
     activation = Neuron("Neuron.ReLU", "Neuron.dReLU")
     bias = Neuron("Neuron.bias", "Neuron.dbias")
     matrix: ndarray = np.random.randn(nx, nx) * np.sqrt(2 / nx)
@@ -114,7 +134,11 @@ def basic_regressor(nx: int) -> MLP:
 
 
 def main() -> int:
-    """Trains an example regression MLP."""
+    """Train a simple regression MLP on a CSV.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")

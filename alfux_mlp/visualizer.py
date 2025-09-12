@@ -18,10 +18,16 @@ from .pair_plot import PairPlot
 
 
 class Visualizer:
-    """Handle visualization of datas."""
+    """Interactive data visualizer for numeric features."""
 
     def __init__(self: Self, data: DataFrame, **param: dict) -> None:
-        """Initializes the figue."""
+        """Initialize the figure and UI elements.
+
+        Args:
+            data (DataFrame): Input data.
+            **param: Either ``remap`` mapping, or ``trait`` and ``drop``
+                for preprocessing, plus optional ``title``.
+        """
         if "remap" in param:
             self._data = data
             self._remap = param["remap"]
@@ -44,7 +50,7 @@ class Visualizer:
 
     def _pre_process(self: Self, data: DataFrame, trait: int,
                      drop: list) -> DataFrame:
-        """Renames dataframe's headers."""
+        """Rename DataFrame headers and select numeric columns."""
         head = {k: str(v) for (k, v) in zip(data.columns, data.columns)}
         data.rename(head, axis=1, inplace=True)
         if trait is not None:
@@ -59,7 +65,7 @@ class Visualizer:
         return data.rename(head, axis=1)
 
     def _describe(self: Self) -> str:
-        """Data description text."""
+        """Generate text description (statistics) for the selected axis."""
         text = ''
         for trait in self._traits:
             selected = self._select(self._xaxis + 1, trait)
@@ -77,7 +83,7 @@ class Visualizer:
         return text
 
     def _generate_buttons(self: Self) -> Generator:
-        """Generates buttons for the data visualization."""
+        """Generate control buttons for the visualization."""
         n = self._data.shape[1] - 1
         for i in range(n):
             axis = self._fig.add_axes(
@@ -96,12 +102,12 @@ class Visualizer:
         yield button
 
     def _pair_plot(self: Self, event: MouseEvent) -> None:
-        """Generates and displays a pair plot of the data."""
+        """Generate and display a pair plot of the data."""
         if event.button == MouseButton.LEFT:
             PairPlot(self._data, remap=self._remap).show()
 
     def _box_plot(self: Self, event: MouseEvent) -> None:
-        """Switch histogram and box plot."""
+        """Toggle between histogram and box plot modes."""
         if event.button == MouseButton.LEFT:
             self._box = not self._box
             if self._box:
@@ -112,10 +118,10 @@ class Visualizer:
             self._update_plot()
 
     def _click_event(self: Self, column: int) -> Callable:
-        """Generates on_click callbacks to update plotted datas."""
+        """Generate callbacks to update plotted data on click."""
 
         def on_click(event: MouseEvent) -> None:
-            """Updates collumns to show on screen."""
+            """Update selected columns for display."""
             if event.button == MouseButton.RIGHT:
                 self._xaxis = column
             elif event.button == MouseButton.LEFT:
@@ -127,7 +133,7 @@ class Visualizer:
         return on_click
 
     def _update_buttons(self: Self) -> None:
-        """Updates buttons' colors."""
+        """Update buttons' colors to reflect selection."""
         for button in self._button:
             button.ax.set_facecolor("1")
             button.color = "1"
@@ -147,19 +153,19 @@ class Visualizer:
             self._hide_stats()
 
     def _display_stats(self: Self) -> None:
-        """Displays statistics."""
+        """Display statistics pane."""
         boxplot = self._plot.get_position()
         self._plot.set_position([boxplot.x0, boxplot.y0, 0.875, 0.8])
         self._text.set_text(self._describe())
 
     def _hide_stats(self: Self) -> None:
-        """Hides statistics."""
+        """Hide statistics pane."""
         boxplot = self._plot.get_position()
         self._plot.set_position([boxplot.x0, boxplot.y0, 0.92, 0.8])
         self._text.set_text("")
 
     def _update_plot(self: Self) -> None:
-        """Updates the plot on screen"""
+        """Update the plot on screen."""
         self._plot.clear()
         if self._xaxis == self._yaxis:
             if self._box:
@@ -178,7 +184,7 @@ class Visualizer:
         self._fig.canvas.draw()
 
     def _generate_histogram(self: Self) -> None:
-        """Generates a histogram for the current selection."""
+        """Generate a histogram for the current selection."""
         for t in self._traits:
             select = [x for x in self._select(self._xaxis + 1, t)]
             self._plot.hist(select, bins=100, alpha=0.7)
@@ -186,10 +192,10 @@ class Visualizer:
         self._plot.set_title(f"Distribution of {self._remap[self._xaxis + 1]}")
 
     def _generate_boxplot(self: Self) -> None:
-        """Generates a box plot for the current selection."""
+        """Generate a box plot for the current selection."""
 
         def generate_selection() -> Generator:
-            """Iterator of group of traits."""
+            """Iterate groups of traits for box plotting."""
             for t in self._traits:
                 yield [x for x in self._select(self._xaxis + 1, t) if x == x]
 
@@ -204,18 +210,18 @@ class Visualizer:
         self._plot.set_title(f"Distribution of {self._remap[self._xaxis + 1]}")
 
     def _select(self: Self, column: int, trait: str) -> Generator:
-        """Iterable selecting only values in column corresponding to trait."""
+        """Iterate values in ``column`` corresponding to the given trait."""
         for i in range(self._data.shape[0]):
             if self._data.at[i, 0] == trait:
                 yield self._data.at[i, column]
 
     def show(self: Self) -> None:
-        """Shows the visualizer."""
+        """Show the visualizer window."""
         plt.show()
 
 
 def main() -> None:
-    """Visualizes csv dataset."""
+    """Visualize a CSV dataset with interactive controls."""
     try:
         av = arg.ArgumentParser(description=main.__doc__)
         av.add_argument("--debug", action="store_true", help="debug mode")

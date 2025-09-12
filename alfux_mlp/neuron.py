@@ -8,20 +8,18 @@ from numpy import ndarray
 class Neuron:
     """Neuron node for a neural network.
 
-    It is an object with real function and it's derivative.
-
-    This class is expected to be used with full knowledge of how it works.
-    There isn't any verification or security of any kind outside of __init__
-    in order to reduce time and operations complexities.
+    Wraps a real-valued function and its derivative. Minimal validation is
+    performed for performance.
     """
 
     def __init__(self: Self, f: Callable | str, df: Callable = None) -> None:
-        """Define neuron with its activation function and derivative.
+        """Define neuron with activation function and derivative.
 
         Args:
-            f must be a single parameter real function or the name of a
-            predefined Neuron.
-            df must be the derivative of f. If f is a string, df is ignored.
+            f (Callable | str): Single-parameter function or the name of a
+                predefined function (attribute of ``Neuron``).
+            df (Callable | None): Derivative of ``f``. Ignored if ``f`` is a
+                string.
         """
         if isinstance(f, str):
             self.eval: Callable = getattr(Neuron, f)
@@ -31,24 +29,24 @@ class Neuron:
             self.diff: Callable = df
 
     def eval(self: Self, *args: list) -> ndarray:
-        """Computes neuron's output.
+        """Compute the neuron's output.
 
         Args:
-            <*args> the function is dynamically allocated and takes same
-            arguments as the given function.
+            *args: Passed through to the configured function.
+
         Returns:
-            The function's output as an ndarray
+            ndarray: Function output.
         """
         pass
 
     def diff(self: Self, *args: list) -> ndarray:
-        """Derivative of the neuron. Computes differential in point x.
+        """Compute the derivative at the given point.
 
         Args:
-            <*args> the function is dynamically allocated and takes same
-            arguments as the given function.
+            *args: Passed through to the configured derivative function.
+
         Returns:
-            The function's output as an ndarray
+            ndarray: Derivative output.
         """
         pass
 
@@ -94,12 +92,13 @@ class Neuron:
 
     @staticmethod
     def softmax(x: ndarray) -> ndarray:
-        """Computes the value of softmax function in x.
+        """Compute the value of the softmax function.
 
         Args:
-            x (ndarray): The input vector.
+            x (ndarray): Input vector or batch.
+
         Returns:
-            ndarray: The output value.
+            ndarray: Softmax output normalized along the last axis.
         """
         out = np.exp(x)
         if x.ndim > 1:
@@ -108,7 +107,7 @@ class Neuron:
 
     @staticmethod
     def dsoftmax(x: ndarray) -> ndarray:
-        """Compute the differential of softmax in <x>."""
+        """Compute the Jacobian of softmax at ``x``."""
         vector = np.exp(x)
         vector /= np.sum(vector)
         Jacobian = -np.outer(vector, vector)
@@ -118,46 +117,46 @@ class Neuron:
 
     @staticmethod
     def CELF(y: ndarray, x: ndarray) -> ndarray:
-        """Cross Entropy Loss Function."""
+        """Cross-entropy loss function."""
         return -np.sum(
             np.log(np.einsum("ij,ij->i", y, x)), keepdims=True, axis=0
         ) / x.shape[0]
 
     @staticmethod
     def dCELF(y: ndarray, x: ndarray) -> ndarray:
-        """Derivative of the Cross Entropy Loss Function."""
+        """Derivative of the cross-entropy loss function."""
         return -np.sum(y / (x + 1e-15), keepdims=True, axis=0) / x.shape[0]
 
     @staticmethod
     def MSE(y: ndarray, x: ndarray) -> ndarray:
-        """Mean Squared Error function."""
+        """Mean squared error (MSE)."""
         return np.sum((y - x) ** 2, keepdims=True) / x.shape[0]
 
     @staticmethod
     def dMSE(y: ndarray, x: ndarray) -> ndarray:
-        """Derivative of the Mean Squared Error function."""
+        """Derivative of the mean squared error (MSE)."""
         return -2 * (y - x) / x.shape[0]
 
     @staticmethod
     def MAE(y: ndarray, x: ndarray) -> ndarray:
-        """Mean Absolute Error."""
+        """Mean absolute error (MAE)."""
         return np.sum(np.abs(y - x), keepdims=True) / x.shape[0]
 
     @staticmethod
     def dMAE(y: ndarray, x: ndarray) -> ndarray:
-        """Derivative of the Mean Absolute Error."""
+        """Derivative of the mean absolute error (MAE)."""
         return np.sign(x - y) / x.shape[0]
 
     @staticmethod
     def MAE_STRONG_0(y: ndarray, x: ndarray) -> ndarray:
-        """Mean Absolute Error with strong weight on 0's."""
+        """MAE with stronger penalty when the target is 0."""
         return np.sum(
             np.where(y == 0, 2 * np.abs(y - x), np.abs(y - x)), keepdims=True
         ) / x.shape[0]
 
     @staticmethod
     def dMAE_STRONG_0(y: ndarray, x: ndarray) -> ndarray:
-        """Derivative of the Mean Absolute Error STRONG 0."""
+        """Derivative of the MAE_STRONG_0 loss."""
         return np.sum(
             np.where(y == 0, 2 * np.sign(x - y), np.sign(x - y)),
             keepdims=True
@@ -165,17 +164,21 @@ class Neuron:
 
     @staticmethod
     def bias(x: ndarray) -> ndarray:
-        """Returns 1."""
+        """Return an array of ones shaped like ``x``."""
         return np.ones(np.atleast_1d(x).shape)
 
     @staticmethod
     def dbias(x: ndarray) -> ndarray:
-        """Returns 0."""
+        """Return an array of zeros shaped like ``x``."""
         return np.zeros(np.atleast_1d(x).shape)
 
 
 def main() -> None:
-    """Displays neuron output from dataset input."""
+    """Interactively display neuron outputs for sample inputs.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         print("Neuron presentation:")
         end = False

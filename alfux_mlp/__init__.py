@@ -1,4 +1,8 @@
-"""Module import controller."""
+"""Public API for the ``alfux_mlp`` package.
+
+Exports core classes such as ``Neuron``, ``Layer``, ``MLP``, and utilities for
+training, visualization, and statistics.
+"""
 from .neuron import Neuron
 from .layer import Layer
 from .mlp import MLP

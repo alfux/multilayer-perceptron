@@ -9,14 +9,15 @@ from pandas import DataFrame
 
 
 def split(df: DataFrame, frac: float = 0.8) -> tuple[DataFrame, DataFrame]:
-    """Split a df in two DataFrames with frac and 1 - frac proportions.
+    """Split a DataFrame into train/validation parts.
 
     Args:
-        df (DataFrame): The DataFrame to split.
-        frac (float): The proportion of the first part. The other part will
-            be 1 - frac.
+        df (DataFrame): Input DataFrame to split.
+        frac (float, optional): Proportion of the first split (train). The
+            second split uses ``1 - frac``. Defaults to ``0.8``.
+
     Returns:
-        tuple: The two DataFrames.
+        tuple[DataFrame, DataFrame]: The two splits ``(first, second)``.
     """
     df = df.to_numpy()
     frac = int(np.clip(frac, 0, 1) * len(df))
@@ -24,13 +25,14 @@ def split(df: DataFrame, frac: float = 0.8) -> tuple[DataFrame, DataFrame]:
     return DataFrame(df[indexes[:frac]]), DataFrame(df[indexes[frac:]])
 
 
-def get_args(description: str = '') -> Namespace:
-    """Manages program arguments.
+def get_args(description: str = "") -> Namespace:
+    """Parse command-line arguments.
 
     Args:
-        description (str): is the program helper description.
+        description (str): Program help description shown in ``--help``.
+
     Returns:
-        Namespace: The arguments.
+        Namespace: Parsed CLI arguments.
     """
     av = arg.ArgumentParser(description=description)
     av.add_argument("csv", help="The path of the CSV file to split.")
@@ -43,10 +45,10 @@ def get_args(description: str = '') -> Namespace:
 
 
 def main() -> int:
-    """Separates a data CSV file in two CSV files with a 80/20 ratio.
+    """Split a CSV into two CSV files (default 80/20).
 
     Returns:
-        int: 1 for errors and 0 otherwise.
+        int: Exit code (``0`` on success, ``1`` on failure).
     """
     try:
         av = get_args(main.__doc__)

@@ -10,14 +10,18 @@ from .statistics import Statistics
 
 
 class Processor:
-    """Create an instance of this class to preprocess a dataset."""
+    """Preprocess datasets and targets for training.
+
+    Provides utilities for normalization, standardization, one-hot encoding,
+    and bias augmentation, while recording reversible transformations.
+    """
 
     def __init__(self: Self, dataset: DataFrame, target: str | int) -> None:
-        """Creates a preprocessor for a given dataset.
+        """Create a preprocessor for a dataset.
 
         Args:
-            dataset is the DataFrame to process.
-            target is the column containing the learning target.
+            dataset (DataFrame): Input dataset containing features and target.
+            target (str | int): Name or index of the target column.
         """
         self._target: DataFrame = dataset.loc[:, [target]]
         self._data: DataFrame = dataset.drop([target], axis=1)
@@ -30,12 +34,12 @@ class Processor:
 
     @property
     def target(self: Self) -> ndarray:
-        """Getter for the target feature."""
+        """Get the target values as a NumPy array."""
         return self._target.to_numpy()
 
     @target.setter
     def target(self: Self, value: DataFrame | ndarray) -> None:
-        """Setter of the current target."""
+        """Set the current target values."""
         if isinstance(value, ndarray):
             self._target = DataFrame(value)
         else:
@@ -43,12 +47,12 @@ class Processor:
 
     @property
     def data(self: Self) -> ndarray:
-        """Getter of the current dataset."""
+        """Get the current feature matrix as a NumPy array."""
         return self._data.to_numpy()
 
     @data.setter
     def data(self: Self, value: DataFrame | ndarray) -> None:
-        """Setter of the current dataset."""
+        """Set the current feature matrix and recompute stats."""
         if isinstance(value, ndarray):
             self._data = DataFrame(value)
         else:
@@ -57,21 +61,25 @@ class Processor:
 
     @property
     def unique(self: Self) -> ndarray:
-        """Getter of the ordered list of unique labels."""
+        """Get the ordered list of unique labels (if one-hot encoded)."""
         return self._unique
 
     @property
     def preprocess(self: Self) -> list[Callable]:
-        """Getter of the ordered list of performed preprocesses"""
+        """Get the list of performed preprocessing steps."""
         return self._preprocess
 
     @property
     def postprocess(self: Self) -> list[Callable]:
-        """Getter of the ordered list of performed postprocesses"""
+        """Get the list of performed postprocessing steps."""
         return self._postprocess
 
     def onehot(self: Self) -> Self:
-        """Transform the label field in a vectorized equivalent."""
+        """One-hot encode the target labels and record the inverse mapping.
+
+        Returns:
+            Processor: The current instance.
+        """
         if self._unique is None:
             (uni, inv) = np.unique(self._target, return_inverse=True)
             self._target = np.eye(len(uni))[inv.flatten()]
@@ -82,10 +90,10 @@ class Processor:
         return self
 
     def pre_standardize(self: Self) -> Self:
-        """Standardizes the current dataset and stores the process.
+        """Standardize the dataset and record the process.
 
-        <b>Returns:</b>
-            The current instance of the class.
+        Returns:
+            Processor: The current instance.
         """
         mean = self._stat.loc["Mean"].to_numpy()
         std = self._stat.loc["Std"].to_numpy()
@@ -94,10 +102,10 @@ class Processor:
         return self
 
     def post_standardize(self: Self) -> Self:
-        """Standardizes the current target and stores the inverse process.
+        """Standardize the target and record the inverse process.
 
-        <b>Returns:</b>
-            The current instance of the class.
+        Returns:
+            Processor: The current instance.
         """
         stats = Statistics(self._target).stats
         mean = stats.loc["Mean"].to_numpy()
@@ -108,12 +116,14 @@ class Processor:
         return self
 
     def pre_normalize(self: Self, b: list[float] = [0, 1]) -> Self:
-        """Normalizes the current dataset and stores the process.
+        """Normalize the dataset to a given interval and record the process.
 
         Args:
-            <b> represents the wanted interval.
+            b (list[float], optional): Target interval ``[min, max]``.
+                Defaults to ``[0, 1]``.
+
         Returns:
-            The current instance of the class.
+            Processor: The current instance.
         """
         m = self._stat.loc["Min"].to_numpy()
         s = self._stat.loc["Max"].to_numpy() - m
@@ -122,10 +132,10 @@ class Processor:
         return self
 
     def post_normalize(self: Self, b: list[float] = [0, 1]) -> Self:
-        """Normalizes the current target and stores the inverse process.
+        """Normalize the target and record the inverse process.
 
-        <b>Returns:</b>
-            The current instance of the class.
+        Returns:
+            Processor: The current instance.
         """
         stats = Statistics(self._target).stats
         m = stats.loc["Min"].to_numpy()
@@ -143,108 +153,122 @@ class Processor:
 
     @staticmethod
     def compile_processes(processes: list[Callable]) -> Callable:
-        """Compiles a list of processes in a single function.
+        """Compile a list of processes into a single function.
 
         Args:
-            processes is the list of tuples containing a function and its
-            parameters.
+            processes (list[tuple[Callable, list]]): Sequence of
+                ``(function, [params...])`` pairs applied in order.
+
+        Returns:
+            Callable: Composed processing function.
         """
         if len(processes) == 0:
             return Processor.identity
 
         def result(x: ndarray) -> ndarray:
-            """First process"""
+            """Apply the first process."""
             return processes[0][0](*processes[0][1], x)
 
         for process in processes[1:]:
             prev = result
 
             def result(x: ndarray) -> ndarray:
-                """Composed process"""
+                """Apply the next process on previous output."""
                 return process[0](*process[1], prev(x))
 
         return result
 
     @staticmethod
     def standardize(mean: ndarray, std: ndarray, x: ndarray) -> ndarray:
-        """Standardizes a ndarray.
+        """Standardize an array.
 
         Args:
-            mean is the mean of the datas to standardize
-            std is the standard deviation of the datas to standardize
-            x is the input to standardize
+            mean (ndarray): Mean of the data to standardize.
+            std (ndarray): Standard deviation of the data.
+            x (ndarray): Input data.
+
         Returns:
-            The standardized output
+            ndarray: Standardized output ``(x - mean) / std``.
         """
         return (x - mean) / std
 
     @staticmethod
     def unstdardize(mean: ndarray, std: ndarray, x: ndarray) -> ndarray:
-        """Revert the standardization of a ndarray.
+        """Revert standardization.
 
         Args:
-            mean is the mean of the datas before standardization
-            std is the standard deviation of the datas before standardization
-            x is the input to unstandardize
+            mean (ndarray): Original mean.
+            std (ndarray): Original standard deviation.
+            x (ndarray): Standardized data.
+
         Returns:
-            The unstandardized output
+            ndarray: Unstandardized output ``std * x + mean``.
         """
         return std * x + mean
 
     @staticmethod
     def normalize(min: ndarray, span: ndarray, b: list, x: ndarray) -> ndarray:
-        """Normalizes a ndarray.
+        """Normalize an array to a target interval.
 
         Args:
-            min is the min of the datas to normalize
-            span is the Max - Min range of the datas to normalize
-            x is the input to normalize
+            min (ndarray): Minimum of the original data.
+            span (ndarray): Range ``max - min`` of the original data.
+            b (list): Target interval ``[min, max]``.
+            x (ndarray): Input data.
+
         Returns:
-            The normalized output
+            ndarray: Normalized output.
         """
         return b[0] + (b[1] - b[0]) * (x - min) / span
 
     @staticmethod
     def unrmalize(min: ndarray, span: ndarray, b: list, x: ndarray) -> ndarray:
-        """Revert the normalization of a ndarray.
+        """Revert normalization.
 
         Args:
-            min is the min of the datas before normalization
-            span is the Max - Min range of the datas before normalization
-            x is the input to unnormalize
+            min (ndarray): Original minimum.
+            span (ndarray): Original range ``max - min``.
+            b (list): Target interval ``[min, max]`` used for normalization.
+            x (ndarray): Normalized data.
+
         Returns:
-            The unnormalized output
+            ndarray: Unnormalized output.
         """
         return min + span * (x - b[0]) / (b[1] - b[0])
 
     @staticmethod
     def revonehot(uniques: ndarray, x: ndarray) -> ndarray:
-        """Reverse the onehot transformation of a classification.
+        """Reverse one-hot encoding to original labels.
 
         Args:
-            uniques (ndarray): The unique item list.
-            x (ndarray): The onehot encoded values.
+            uniques (ndarray): Ordered list of unique labels.
+            x (ndarray): One-hot encoded values.
+
         Returns:
-            ndarray: The corresponding unique of each element of x.
+            ndarray: Decoded labels corresponding to each row of ``x``.
         """
         print(x)
         return uniques[np.argmax(x, axis=1)]
 
     @staticmethod
     def add_bias(x: ndarray) -> ndarray:
-        """Adds a column of 1 at the right end of a ndarray."""
+        """Append a bias column of ones to an array."""
         if x.ndim == 2:
             return np.column_stack([x, np.ones((x.shape[0], 1))])
         return np.concat([x, np.ones(1)])
 
     @staticmethod
     def identity(x: ndarray) -> ndarray:
-        """Returns the input."""
+        """Return the input unchanged."""
         return x
 
 
 def main() -> int:
-    """Print a test of the Processor functionalities"""
+    """Print a demonstration of Processor functionalities.
+
+    Returns:
+        int: Exit code (``0`` on success, ``1`` on failure).
+    """
     try:
         book = DataFrame([['a', 1, 0, 0.8],
                           ['b', 4, 375, 7],
