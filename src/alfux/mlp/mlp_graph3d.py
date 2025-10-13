@@ -1,7 +1,6 @@
 import argparse as arg
 import sys
 import traceback
-from typing import Self
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
@@ -18,7 +17,7 @@ class MLP3DGraph:
     """Plot a 3D surface of an MLP against a training set."""
 
     def __init__(
-            self: Self, mlp: str | MLP, training: str | DataFrame,
+            self: "MLP3DGraph", mlp: str | MLP, training: str | DataFrame,
             frac: float = 1, title: str = "Graph", grid: int = 100,
             figsize: tuple = (15, 9), alpha: float = 0.75,
             xlim: list[float] = [0, 90000], ylim: list[float] = [0, 5000]
@@ -60,7 +59,7 @@ class MLP3DGraph:
         self._ax.set_zlabel("Index Energie Active")
         (self._xlim, self._ylim) = (xlim, ylim)
 
-    def plot_mlp(self: Self) -> Self:
+    def plot_mlp(self: "MLP3DGraph") -> "MLP3DGraph":
         """Plot the MLP surface over the grid.
 
         Returns:
@@ -76,7 +75,7 @@ class MLP3DGraph:
         self._ax.plot_surface(x, y, z, cmap="viridis", alpha=self._alpha)
         return self
 
-    def plot_training_set(self: Self) -> Self:
+    def plot_training_set(self: "MLP3DGraph") -> "MLP3DGraph":
         """Plot the sampled training set values.
 
         Returns:
@@ -87,7 +86,7 @@ class MLP3DGraph:
         self._ax.scatter(x, y, z, c=z, cmap="viridis", marker="o", alpha=1)
         return self
 
-    def verify(self: Self) -> Self:
+    def verify(self: "MLP3DGraph") -> "MLP3DGraph":
         """Compute and print verification scores (RMSE and MAE)."""
         input_layer = self._set.loc[:, ["Temps (sec)", "FaitJour"]].to_numpy()
         y = self._set.loc[:, ["IEA"]].to_numpy()
@@ -96,7 +95,7 @@ class MLP3DGraph:
         print("\n\tLoss MAE = ", Neuron.MAE(y, f_x), end="\n\n")
         return self
 
-    def show(self: Self) -> Self:
+    def show(self: "MLP3DGraph") -> "MLP3DGraph":
         """Show the plot (wrapper around ``plt.show()``)."""
         plt.show()
         return self

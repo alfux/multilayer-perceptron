@@ -2,7 +2,6 @@ import argparse as arg
 from datetime import datetime
 import sys
 import traceback
-from typing import Self
 
 import numpy as np
 from numpy import ndarray
@@ -21,7 +20,7 @@ class Teacher:
         pass
 
     def __init__(
-            self: Self, book: DataFrame, target: str | int,
+            self: "Teacher", book: DataFrame, target: str | int,
             normal: list = [0, 1], mlp: MLP = None, pre: str = "normalize",
             post: str = "normalize", bias: bool = True
     ) -> None:
@@ -59,18 +58,18 @@ class Teacher:
         self._mlp: MLP = mlp
 
     @property
-    def mlp(self: Self) -> MLP:
+    def mlp(self: "Teacher") -> MLP:
         """Get the underlying MLP model."""
         return self._mlp
 
     @mlp.setter
-    def mlp(self: Self, value: MLP) -> None:
+    def mlp(self: "Teacher", value: MLP) -> None:
         """Set the underlying MLP model."""
         self._mlp = value
 
     def teach(
-        self: Self, epoch: int, time: bool = False, frac: float = 1
-    ) -> Self:
+        self: "Teacher", epoch: int, time: bool = False, frac: float = 1
+    ) -> "Teacher":
         """Train the internal MLP for a number of epochs.
 
         Args:
@@ -95,7 +94,7 @@ class Teacher:
             print("\n\tTraining time:", datetime.now() - t)
         return self
 
-    def _sample(self: Self, frac: float) -> tuple[ndarray, ndarray]:
+    def _sample(self: "Teacher", frac: float) -> tuple[ndarray, ndarray]:
         """Select a random sample of the data.
 
         Args:

@@ -4,7 +4,7 @@ import json
 import struct
 import sys
 import traceback
-from typing import Self, Generator, Callable
+from typing import Generator, Callable
 
 import numpy as np
 from numpy import ndarray
@@ -21,7 +21,7 @@ class MLP:
     expected shapes and types.
     """
 
-    def __init__(self: Self, layers: list, cost: Neuron, **kw: dict) -> None:
+    def __init__(self: "MLP", layers: list, cost: Neuron, **kw: dict) -> None:
         """Create a single or multilayer perceptron.
 
         Args:
@@ -47,34 +47,34 @@ class MLP:
         self.preprocess = kw.get("preprocess", [])
         self.postprocess = kw.get("postprocess", [])
 
-    def __len__(self: Self) -> int:
+    def __len__(self: "MLP") -> int:
         """Return the number of layers in the MLP."""
         return len(self._layers)
 
     @property
-    def preprocess(self: Self) -> Callable:
+    def preprocess(self: "MLP") -> Callable:
         """Get the compiled preprocessing function."""
         return self._prepro
 
     @preprocess.setter
-    def preprocess(self: Self, value: list[Callable]) -> None:
+    def preprocess(self: "MLP", value: list[Callable]) -> None:
         """Set the preprocessing steps and compile the pipeline."""
         self._save_prepro = value
         self._prepro = Processor.compile_processes(value)
 
     @property
-    def postprocess(self: Self) -> Callable:
+    def postprocess(self: "MLP") -> Callable:
         """Get the compiled postprocessing function."""
         return self._postpro
 
     @postprocess.setter
-    def postprocess(self: Self, value: list[Callable]) -> None:
+    def postprocess(self: "MLP", value: list[Callable]) -> None:
         """Set the postprocessing steps and compile the pipeline."""
         self._save_postpro = value
         self._postpro = Processor.compile_processes(value)
 
     @property
-    def cost(self: Self) -> Neuron:
+    def cost(self: "MLP") -> Neuron:
         """Get the cost (loss) function neuron.
 
         Returns:
@@ -83,7 +83,7 @@ class MLP:
         return self._cost
 
     @property
-    def learning_rate(self: Self) -> float:
+    def learning_rate(self: "MLP") -> float:
         """Get the learning rate.
 
         Returns:
@@ -92,11 +92,11 @@ class MLP:
         return self._lr
 
     @learning_rate.setter
-    def learning_rate(self: Self, value: float) -> None:
+    def learning_rate(self: "MLP", value: float) -> None:
         """Set the learning rate."""
         self._lr = value
 
-    def eval(self: Self, x: ndarray) -> ndarray:
+    def eval(self: "MLP", x: ndarray) -> ndarray:
         """Evaluate the MLP output.
 
         Applies the compiled preprocessing, forward-pass through layers, and
@@ -113,7 +113,7 @@ class MLP:
             x = layer.eval(x)
         return self._postpro(x)
 
-    def save(self: Self, path: str = "./default.mdl") -> Self:
+    def save(self: "MLP", path: str = "./default.mdl") -> "MLP":
         """Save the MLP to a NumPy file.
 
         Args:
@@ -146,7 +146,7 @@ class MLP:
             file.write(json.dumps(model, indent=2))
         return self
 
-    def update(self: Self, truth: ndarray, data: ndarray) -> None:
+    def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
         """Perform one epoch of stochastic gradient descent.
 
         Updates weights using the current cost function and Adam optimizer.
@@ -163,7 +163,7 @@ class MLP:
             self._pb1 *= self._b1
             self._pb2 *= self._b2
 
-    def _backpropagate(self: Self, y: ndarray, input: ndarray) -> None:
+    def _backpropagate(self: "MLP", y: ndarray, input: ndarray) -> None:
         """Backpropagate gradients and update internal moments.
 
         Args:
@@ -179,7 +179,7 @@ class MLP:
             dk = self._layers[i].wdiff(input[i]) @ self._layers[i + 1].W.T @ dk
             self._update_layer(i, np.outer(dk, input[i]))
 
-    def _update_layer(self: Self, i: int, gradient: ndarray) -> None:
+    def _update_layer(self: "MLP", i: int, gradient: ndarray) -> None:
         """Update a layer's weights using Adam.
 
         Args:
@@ -192,7 +192,7 @@ class MLP:
         v = np.sqrt(self._v[i] / (1 - self._pb2)) + 1e-15
         self._layers[i].W -= self._lr * m / v
 
-    def _forward_pass(self: Self, x: ndarray) -> Generator:
+    def _forward_pass(self: "MLP", x: ndarray) -> Generator:
         """Yield inputs for each layer including the final output."""
         for layer in self._layers:
             yield x
@@ -200,7 +200,7 @@ class MLP:
         yield x
 
     @staticmethod
-    def load(path: str) -> Self:
+    def load(path: str) -> "MLP":
         """Load an MLP from a file.
 
         Args:
@@ -233,7 +233,7 @@ class MLP:
         return MLP(**arg)
 
     @staticmethod
-    def load_legacy(path: str) -> Self:
+    def load_legacy(path: str) -> "MLP":
         """Legacy loading for previous versions models.
 
         Args:

@@ -1,6 +1,6 @@
 import sys
 import traceback
-from typing import Self, Callable
+from typing import Callable
 
 import numpy as np
 from numpy import ndarray
@@ -16,7 +16,9 @@ class Processor:
     and bias augmentation, while recording reversible transformations.
     """
 
-    def __init__(self: Self, dataset: DataFrame, target: str | int) -> None:
+    def __init__(
+            self: "Processor", dataset: DataFrame, target: str | int
+    ) -> None:
         """Create a preprocessor for a dataset.
 
         Args:
@@ -33,12 +35,12 @@ class Processor:
         self._postprocess: list[Callable] = []
 
     @property
-    def target(self: Self) -> ndarray:
+    def target(self: "Processor") -> ndarray:
         """Get the target values as a NumPy array."""
         return self._target.to_numpy()
 
     @target.setter
-    def target(self: Self, value: DataFrame | ndarray) -> None:
+    def target(self: "Processor", value: DataFrame | ndarray) -> None:
         """Set the current target values."""
         if isinstance(value, ndarray):
             self._target = DataFrame(value)
@@ -46,12 +48,12 @@ class Processor:
             self._target = value
 
     @property
-    def data(self: Self) -> ndarray:
+    def data(self: "Processor") -> ndarray:
         """Get the current feature matrix as a NumPy array."""
         return self._data.to_numpy()
 
     @data.setter
-    def data(self: Self, value: DataFrame | ndarray) -> None:
+    def data(self: "Processor", value: DataFrame | ndarray) -> None:
         """Set the current feature matrix and recompute stats."""
         if isinstance(value, ndarray):
             self._data = DataFrame(value)
@@ -60,21 +62,21 @@ class Processor:
         self._stat = Statistics(self._data).stats
 
     @property
-    def unique(self: Self) -> ndarray:
+    def unique(self: "Processor") -> ndarray:
         """Get the ordered list of unique labels (if one-hot encoded)."""
         return self._unique
 
     @property
-    def preprocess(self: Self) -> list[Callable]:
+    def preprocess(self: "Processor") -> list[Callable]:
         """Get the list of performed preprocessing steps."""
         return self._preprocess
 
     @property
-    def postprocess(self: Self) -> list[Callable]:
+    def postprocess(self: "Processor") -> list[Callable]:
         """Get the list of performed postprocessing steps."""
         return self._postprocess
 
-    def onehot(self: Self) -> Self:
+    def onehot(self: "Processor") -> "Processor":
         """One-hot encode the target labels and record the inverse mapping.
 
         Returns:
@@ -89,7 +91,7 @@ class Processor:
             self._postprocess = new_postprocess + self._postprocess
         return self
 
-    def pre_standardize(self: Self) -> Self:
+    def pre_standardize(self: "Processor") -> "Processor":
         """Standardize the dataset and record the process.
 
         Returns:
@@ -101,7 +103,7 @@ class Processor:
         self._preprocess += [(Processor.standardize, [mean, std])]
         return self
 
-    def post_standardize(self: Self) -> Self:
+    def post_standardize(self: "Processor") -> "Processor":
         """Standardize the target and record the inverse process.
 
         Returns:
@@ -115,7 +117,9 @@ class Processor:
         self._postprocess = new_postprocess + self._postprocess
         return self
 
-    def pre_normalize(self: Self, b: list[float] = [0, 1]) -> Self:
+    def pre_normalize(
+            self: "Processor", b: list[float] = [0, 1]
+    ) -> "Processor":
         """Normalize the dataset to a given interval and record the process.
 
         Args:
@@ -131,7 +135,9 @@ class Processor:
         self._preprocess += [(Processor.normalize, [m, s, b])]
         return self
 
-    def post_normalize(self: Self, b: list[float] = [0, 1]) -> Self:
+    def post_normalize(
+            self: "Processor", b: list[float] = [0, 1]
+    ) -> "Processor":
         """Normalize the target and record the inverse process.
 
         Returns:
@@ -145,7 +151,7 @@ class Processor:
         self._postprocess = new_postprocess + self._postprocess
         return self
 
-    def pre_bias(self: Self) -> Self:
+    def pre_bias(self: "Processor") -> "Processor":
         """Adds a bias component at the end of the vector of the dataset."""
         self.data = Processor.add_bias(self._data)
         self._preprocess += [(Processor.add_bias, [])]

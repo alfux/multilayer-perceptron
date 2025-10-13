@@ -1,6 +1,6 @@
 import argparse as arg
 import sys
-from typing import Self, Generator
+from typing import Generator
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ from pandas import DataFrame, Series
 class Statistics:
     """Compute basic descriptive statistics for a dataset."""
 
-    def __init__(self: Self, data: DataFrame) -> None:
+    def __init__(self: "Statistics", data: DataFrame) -> None:
         """Compute statistics for the provided DataFrame.
 
         Args:
@@ -21,12 +21,12 @@ class Statistics:
         self.stats = DataFrame(self._generate_stats(data)).transpose()
         self.stats.columns = data.columns
 
-    def _generate_stats(self: Self, data: DataFrame) -> Generator:
+    def _generate_stats(self: "Statistics", data: DataFrame) -> Generator:
         """Iterate over per-column statistics series."""
         for x in data.columns:
             yield self._compute(data[x])
 
-    def _compute(self: Self, column: Series) -> Series:
+    def _compute(self: "Statistics", column: Series) -> Series:
         """Compute statistics on a single column.
 
         Args:
@@ -51,7 +51,7 @@ class Statistics:
         stat[8] = column[-1]
         return Series(stat, self._fields)
 
-    def _percentile(self: Self, sorted: list, p: float) -> float:
+    def _percentile(self: "Statistics", sorted: list, p: float) -> float:
         """Compute the percentile of a sorted list."""
         p = (len(sorted) - 1) * np.clip(p, 0, 100) / 100
         r = p % 1

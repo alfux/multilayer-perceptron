@@ -4,12 +4,10 @@ from argparse import Namespace
 import json
 import sys
 import traceback
-from typing import Generator
 
-import numpy as np
 import pandas as pd
 
-from .teacher import Teacher, MLP, Layer, Neuron
+from .teacher import Teacher, MLP
 
 
 class Regression:
@@ -40,36 +38,14 @@ class Regression:
         Returns:
             MLP: The trained model instance.
         """
-        activ = Neuron(self._config["activ"])
-        cost = Neuron(self._config["cost"])
-        layers = list(Regression.gen_layers(self._config["layers"], activ))
-        mlp = MLP(layers, cost, learning_rate=self._config["learning_rate"])
+        mlp = MLP.load(self._config["model"])
+        mlp.learning_rate = self._config["learning_rate"]
         teacher = Teacher(
             self._data, self._config["truth"], self._config["outnorm"], mlp,
             self._config.get("pre", None), self._config.get("post", None)
         )
         teacher.teach(self._config["epoch"], True, self._config["sample"])
         return teacher.mlp
-
-    @staticmethod
-    def gen_layers(layers: list[int], neuron: Neuron) -> Generator:
-        """Yield untrained layers according to the configuration.
-
-        Args:
-            layers (list[int]): Layer sizes from input to output.
-            neuron (Neuron): Activation function to use for hidden/output.
-
-        Yields:
-            Layer: Each constructed layer in order.
-        """
-        bias = [Neuron("bias")]
-        neuron = [neuron]
-        for i in range(1, len(layers) - 1):
-            n = layers[i - 1] + 1
-            matrix = np.random.randn(layers[i] + 1, n) * np.sqrt(2 / n)
-            yield Layer(neuron * layers[i] + bias, matrix)
-        matrix = np.random.randn(layers[-1], layers[-2] + 1)
-        yield Layer(neuron * layers[-1], matrix)
 
 
 def get_args(description: str = "") -> Namespace:
@@ -91,24 +67,18 @@ def main() -> int:
     """Train and save MLP regressors defined in a JSON file.
 
     Examples:
-        JSON configuration structure::
-
+        JSON configuration structure:\n
             {
                 "file": "path/to/training.csv",
                 "truth": "target_column_name",
                 "drops": ["optional", "columns", "to", "drop"],
                 "header": true,
-                "layers": [n_input, hidden1, ..., n_output],
                 "epoch": 100,
                 "sample": 0.5,
-                "outnorm": [0.0, 1.0],
-                "save": "path/to/model.npy",
-                "activ": "<Neuron activation name>",
+                "model": path/to/file.json,
                 "cost": "<Neuron cost name>",
-                "pre": "normalize|standardize",
-                "post": "normalize|standardize|onehot"
+                "save": "path/to/file.json"
             }
-
     Returns:
         int: Exit code (``0`` on success, ``1`` on failure).
     """

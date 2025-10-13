@@ -1,6 +1,6 @@
 import argparse as arg
 import sys
-from typing import Self, Generator
+from typing import Generator
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
@@ -11,7 +11,7 @@ from pandas import DataFrame
 class PairPlot:
     """Generate a pair plot from a DataFrame."""
 
-    def __init__(self: Self, data: DataFrame, **kwargs: dict):
+    def __init__(self: "PairPlot", data: DataFrame, **kwargs: dict):
         """Process the DataFrame and create the pair plot.
 
         Args:
@@ -33,7 +33,7 @@ class PairPlot:
         self._fig.subplots_adjust(0.02, 0.01, 0.98, 0.93)
         self._generate_pair_plot()
 
-    def _pre_process(self: Self, data: DataFrame, trait: int,
+    def _pre_process(self: "PairPlot", data: DataFrame, trait: int,
                      drop: list) -> DataFrame:
         """Rename DataFrame headers and select numeric columns."""
         traits = data[trait]
@@ -45,7 +45,7 @@ class PairPlot:
         self._remap = {v: k for (v, k) in zip(head.values(), head.keys())}
         return data.rename(head, axis=1)
 
-    def _generate_pair_plot(self: Self) -> None:
+    def _generate_pair_plot(self: "PairPlot") -> None:
         """Generate all subplots for the pair plot."""
         labels = self._data.columns[1:]
         mosaic = [[f"{i}/{j}" for j in labels] for i in labels]
@@ -59,7 +59,7 @@ class PairPlot:
         self._fig.legend(self._traits, fancybox=True, shadow=True, ncol=4,
                          loc="upper center")
 
-    def _scatter_plot(self: Self, plot: Axes, i: int, j: int) -> None:
+    def _scatter_plot(self: "PairPlot", plot: Axes, i: int, j: int) -> None:
         """Generate a scatter plot of feature ``i`` against ``j``."""
         for trait in self._traits:
             selectx = list(self._select(j, trait))
@@ -75,7 +75,7 @@ class PairPlot:
             plot.set_ylabel(self._remap[i], loc="center")
             plot.yaxis.set_label_position("left")
 
-    def _histogram(self: Self, plot: Axes, i: int) -> None:
+    def _histogram(self: "PairPlot", plot: Axes, i: int) -> None:
         """Generate a histogram of feature ``i``."""
         for trait in self._traits:
             selected = list(self._select(i, trait))
@@ -88,13 +88,13 @@ class PairPlot:
             plot.set_ylabel(self._remap[i], loc="center")
             plot.yaxis.set_label_position("left")
 
-    def _select(self: Self, column: int, trait: str) -> Generator:
+    def _select(self: "PairPlot", column: int, trait: str) -> Generator:
         """Iterate values in ``column`` corresponding to the given trait."""
         for i in range(self._data.shape[0]):
             if self._data.at[i, 0] == trait:
                 yield self._data.at[i, column]
 
-    def show(self: Self) -> None:
+    def show(self: "PairPlot") -> None:
         """Show the pair plot."""
         plt.show()
 

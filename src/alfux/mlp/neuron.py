@@ -1,5 +1,5 @@
 import sys
-from typing import Self, Callable
+from typing import Callable
 
 import numpy as np
 from numpy import ndarray
@@ -12,7 +12,9 @@ class Neuron:
     performed for performance.
     """
 
-    def __init__(self: Self, f: Callable | str, df: Callable = None) -> None:
+    def __init__(
+            self: "Neuron", f: Callable | str, df: Callable = None
+    ) -> None:
         """Define neuron with activation function and derivative.
 
         Args:
@@ -31,11 +33,11 @@ class Neuron:
             self._activation = f.__name__
 
     @property
-    def activation(self: Self) -> str:
+    def activation(self: "Neuron") -> str:
         """Get the activation function's name."""
         return self._activation
 
-    def eval(self: Self, *args: list) -> ndarray:
+    def eval(self: "Neuron", *args: list) -> ndarray:
         """Compute the neuron's output.
 
         Args:
@@ -46,7 +48,7 @@ class Neuron:
         """
         pass
 
-    def diff(self: Self, *args: list) -> ndarray:
+    def diff(self: "Neuron", *args: list) -> ndarray:
         """Compute the derivative at the given point.
 
         Args:

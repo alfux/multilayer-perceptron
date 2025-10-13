@@ -1,7 +1,6 @@
 import argparse as arg
 import sys
 import traceback
-from typing import Self
 
 import numpy as np
 from numpy import ndarray
@@ -17,7 +16,9 @@ class Layer:
     complexity and overhead.
     """
 
-    def __init__(self: Self, neurons: list[Neuron], weights: ndarray) -> None:
+    def __init__(
+            self: "Layer", neurons: list[Neuron], weights: ndarray
+    ) -> None:
         """Initialize a layer with neurons and weights.
 
         Args:
@@ -41,26 +42,26 @@ class Layer:
                 self.wdiff = self._wdiff
         self._activation = self._neurons[0].activation
 
-    def __len__(self: Self) -> int:
+    def __len__(self: "Layer") -> int:
         """Return the number of neurons in the layer."""
         return len(self._matrix)
 
     @property
-    def activation(self: Self) -> str:
+    def activation(self: "Layer") -> str:
         """str: Get the activation function's name."""
         return self._activation
 
     @property
-    def W(self: Self) -> ndarray:
+    def W(self: "Layer") -> ndarray:
         """Get the weight matrix."""
         return self._matrix
 
     @W.setter
-    def W(self: Self, value: ndarray) -> None:
+    def W(self: "Layer", value: ndarray) -> None:
         """Set the weight matrix."""
         self._matrix = value
 
-    def eval(self: Self, x: ndarray) -> ndarray:
+    def eval(self: "Layer", x: ndarray) -> ndarray:
         """Compute the layer output.
 
         Args:
@@ -69,7 +70,7 @@ class Layer:
         """
         pass
 
-    def _vect_eval(self: Self, x: ndarray) -> ndarray:
+    def _vect_eval(self: "Layer", x: ndarray) -> ndarray:
         """Compute output for a single-neuron layer.
 
         Args:
@@ -81,7 +82,7 @@ class Layer:
         x = (self._matrix @ x.T).T
         return self._neurons.eval(x)
 
-    def _vect_wdiff(self: Self, x: ndarray) -> ndarray:
+    def _vect_wdiff(self: "Layer", x: ndarray) -> ndarray:
         """Compute weighted derivative for a single-neuron layer.
 
         Args:
@@ -93,7 +94,7 @@ class Layer:
         x = (self._matrix @ x.T).T
         return self._neurons.diff(x)
 
-    def _eval(self: Self, x: ndarray) -> ndarray:
+    def _eval(self: "Layer", x: ndarray) -> ndarray:
         """Compute output for a multi-neuron layer.
 
         Args:
@@ -107,7 +108,7 @@ class Layer:
             x[i] = self._neurons[i].eval(x[i])
         return x.T
 
-    def _wdiff(self: Self, x: ndarray) -> ndarray:
+    def _wdiff(self: "Layer", x: ndarray) -> ndarray:
         """Compute weighted derivative for a multi-neuron layer.
 
         Computes the derivative of ``W @ x`` evaluated by each neuron's
