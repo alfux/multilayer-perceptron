@@ -262,6 +262,18 @@ class Processor:
         """Return the input unchanged."""
         return x
 
+    @staticmethod
+    def map(labels: str, x: ndarray) -> str:
+        """Map the highest value of an ndarray to a string.
+
+        Args:
+            labels (str): Labels for the mapping.
+            x (ndarray): A list of value (distribution).
+        Returns:
+            str: The corresponding string.
+        """
+        return labels[np.argmax(x)]
+
 
 def main() -> int:
     """Print a demonstration of Processor functionalities.

@@ -39,10 +39,16 @@ class Layer:
                 self._neurons: list[Neuron] = neurons
                 self.eval = self._eval
                 self.wdiff = self._wdiff
+        self._activation = self._neurons[0].activation
 
     def __len__(self: Self) -> int:
         """Return the number of neurons in the layer."""
         return len(self._matrix)
+
+    @property
+    def activation(self: Self) -> str:
+        """str: Get the activation function's name."""
+        return self._activation
 
     @property
     def W(self: Self) -> ndarray:

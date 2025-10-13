@@ -24,9 +24,16 @@ class Neuron:
         if isinstance(f, str):
             self.eval: Callable = getattr(Neuron, f)
             self.diff: Callable = getattr(Neuron, 'd' + f)
+            self._activation = f
         else:
             self.eval: Callable = f
             self.diff: Callable = df
+            self._activation = f.__name__
+
+    @property
+    def activation(self: Self) -> str:
+        """Get the activation function's name."""
+        return self._activation
 
     def eval(self: Self, *args: list) -> ndarray:
         """Compute the neuron's output.
