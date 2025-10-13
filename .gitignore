@@ -8,7 +8,5 @@ venv
 *.json
 *.mlp
 *.npy
-data
-other
 build
 alfux_mlp.egg-info
