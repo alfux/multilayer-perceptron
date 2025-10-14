@@ -200,16 +200,17 @@ class MLP:
         yield x
 
     @staticmethod
-    def load(path: str) -> "MLP":
+    def load(model: list | str) -> "MLP":
         """Load an MLP from a file.
 
         Args:
-            path (str): Path to the file.
+            model (list | str): Model description or path to the file.
         Returns:
             MLP: Loaded instance.
         """
-        with open(path, "r") as file:
-            model = json.loads(file.read())
+        if isinstance(model, str):
+            with open(model, "r") as file:
+                model = json.loads(file.read())
         arg = {"preprocess": [], "layers": [], "cost": None, "postprocess": []}
         bias = [Neuron("bias")]
         for layer in model:
