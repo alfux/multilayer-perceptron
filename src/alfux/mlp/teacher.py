@@ -9,7 +9,7 @@ import numpy as np
 from numpy import ndarray
 import pandas as pd
 
-from .mlp import MLP
+from .mlp import MLP, Neuron
 from .processor import Processor
 
 
@@ -34,8 +34,7 @@ class Teacher:
             self._data = self._data.drop(config["drops"], axis=1)
         with open(config["model"]) as file:
             model = json.loads(file.read())
-        self._mlp: MLP = MLP.load(model)
-        self._mlp.learning_rate = config["learning_rate"]
+        self._mlp: MLP = MLP.loadd(model)
         self._process(config, model)
         self._data: ndarray = self._proc.data
         self._target: ndarray = self._proc.target
@@ -78,22 +77,20 @@ class Teacher:
             model (list): Model description.
         """
         self._proc = Processor(self._data, config["target"])
-        prepro = [x for x in model if x["type"] == "preprocess"]
-        for pre in prepro:
+        for pre in model["preprocess"]:
             match pre["activation"]:
                 case "normalize":
-                    self._proc.pre_normalize(config["outnorm"])
+                    self._proc.pre_normalize(pre["parameters"][2])
                 case "standardize":
                     self._proc.pre_standardize()
                 case "add_bias":
                     self._proc.pre_bias()
                 case _:
                     raise Teacher.BadTeacher("_process: Unknown parameter")
-        postpro = [x for x in model if x["type"] == "postprocess"]
-        for post in postpro:
+        for post in model["postprocess"]:
             match post["activation"]:
                 case "unrmalize":
-                    self._proc.post_normalize(config["outnorm"])
+                    self._proc.post_normalize(post["parameters"][2])
                 case "unstdardize":
                     self._proc.post_standardize()
                 case "revonehot":
@@ -158,9 +155,7 @@ def main() -> int:
         with open(av.json, "r") as file:
             configurations = json.load(file)
         for config in configurations:
-            teacher = Teacher(config)
-            mlp = teacher.teach().mlp
-            mlp.save(config["save"])
+            Teacher(config).teach().mlp.save(config["save"])
         return 0
     except Exception as err:
         if "av" in locals() and hasattr(av, "debug") and av.debug:

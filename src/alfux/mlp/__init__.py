@@ -12,7 +12,6 @@ from .pair_plot import PairPlot
 from .processor import Processor
 from .statistics import Statistics
 from .visualizer import Visualizer
-from .regression import Regression
 
 __all__ = [
     "Neuron", "Layer", "MLP", "Teacher", "MLP3DGraph", "PairPlot", "Processor",

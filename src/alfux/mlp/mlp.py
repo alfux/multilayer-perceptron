@@ -122,28 +122,28 @@ class MLP:
         Returns:
             MLP: The current instance.
         """
-        model = []
-        for prepro in self._save_prepro:
-            model.append({
-                "type": "preprocess",
-                "parameters": prepro[1],
-                "activation": prepro[0].__name__
-            })
-        for layer in self._layers:
-            model.append({
-                "type": "layer",
-                "dimension": layer.W.shape,
-                "matrix": self.encode_matrix(layer.W),
-                "activation": layer.activation
-            })
-        for postpro in self._save_postpro:
-            model.append({
-                "type": "postprocess",
-                "parameters": postpro[1],
-                "activation": postpro[0].__name__
-            })
+        desc = {
+            "cost": self._cost.activation,
+            "learning_rate": self._lr,
+            "preprocess": [
+                {"parameters": prepro[1], "activation": prepro[0].__name__}
+                for prepro in self._save_prepro
+            ],
+            "layers": [
+                {
+                    "dimension": layer.W.shape,
+                    "matrix": self.encode_matrix(layer.W),
+                    "activation": layer.activation
+                }
+                for layer in self._layers
+            ],
+            "postprocess": [
+                {"parameters": postpro[1], "activation": postpro[0].__name__}
+                for postpro in self._save_postpro
+            ]
+        }
         with open(path, 'w') as file:
-            file.write(json.dumps(model, indent=2))
+            file.write(json.dumps(desc, indent=2, default=str))
         return self
 
     def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
@@ -200,37 +200,40 @@ class MLP:
         yield x
 
     @staticmethod
-    def load(model: list | str) -> "MLP":
+    def loadf(file: str) -> "MLP":
         """Load an MLP from a file.
 
         Args:
-            model (list | str): Model description or path to the file.
+            file (str): Path to the file hodling the model description.
         Returns:
             MLP: Loaded instance.
         """
-        if isinstance(model, str):
-            with open(model, "r") as file:
-                model = json.loads(file.read())
-        arg = {"preprocess": [], "layers": [], "cost": None, "postprocess": []}
-        bias = [Neuron("bias")]
-        for layer in model:
-            match layer["type"]:
-                case "preprocess":
-                    func = getattr(Processor, layer["activation"])
-                    arg["preprocess"].append((func, layer["parameters"]))
-                case "postprocess":
-                    func = getattr(Processor, layer["activation"])
-                    arg["postprocess"].append((func, layer["parameters"]))
-                case _:
-                    n, m = layer["dimension"]
-                    neuron = [Neuron(layer["activation"])]
-                    if layer["matrix"] is None:
-                        m += 1
-                        matrix = np.random.randn(n + 1, m) * np.sqrt(2 / m)
-                    else:
-                        matrix = MLP.decode_matrix((n, m), layer["matrix"])
-                        n -= 1
-                    arg["layers"].append(Layer(neuron * n + bias, matrix))
+        with open(file, "r") as file:
+            model = json.loads(file.read())
+        return MLP.loadd(model)
+
+    @staticmethod
+    def loadd(model: dict) -> "MLP":
+        """Load an MLP from a dict.
+
+        Args:
+            model (dict): Model description.
+        Returns:
+            MLP: Loaded instance.
+        """
+        arg = {
+            "preprocess": [
+                (getattr(Processor, x["activation"]), x["parameters"])
+                for x in model["preprocess"]
+            ],
+            "layers": list(MLP._gen_layers(model["layers"])),
+            "postprocess": [
+                (getattr(Processor, x["activation"]), x["parameters"])
+                for x in model["postprocess"]
+            ],
+            "cost": Neuron(model["cost"]),
+            "learning_rate": model["learning_rate"]
+        }
         return MLP(**arg)
 
     @staticmethod
@@ -243,6 +246,18 @@ class MLP:
             MLP: Loaded instance.
         """
         return MLP(**np.load(path, allow_pickle=True).item())
+
+    @staticmethod
+    def encode_matrix(mat: ndarray) -> str:
+        """Encode a 2d matrix into a byte string.
+
+        Args:
+            mat (ndarray): The matrix to encode.
+        Returns:
+            bytes: The encoded bytestring.
+        """
+        packed = struct.pack('d' * mat.shape[0] * mat.shape[1], *mat.flatten())
+        return base64.b64encode(packed).decode("ascii")
 
     @staticmethod
     def decode_matrix(dim: list, string: str) -> ndarray:
@@ -258,16 +273,55 @@ class MLP:
         return np.array(struct.unpack('d' * dim[0] * dim[1], mat)).reshape(dim)
 
     @staticmethod
-    def encode_matrix(mat: ndarray) -> str:
-        """Encode a 2d matrix into a byte string.
+    def encode_parameters(parameters: list) -> str:
+        """Encode list of parameters for pre/post process functions.
 
         Args:
-            mat (ndarray): The matrix to encode.
+            parameters (list): The list of parameters.
         Returns:
-            bytes: The encoded bytestring.
+            str: The encoded parameters as a string.
         """
-        packed = struct.pack('d' * mat.shape[0] * mat.shape[1], *mat.flatten())
-        return base64.b64encode(packed).decode("ascii")
+        pass
+
+    @staticmethod
+    def decode_parameters(parameters: str) -> list:
+        """Decode list of parameters for pre/post process functions.
+
+        Args:
+            parameters (str): The encoded list.
+        Returns:
+            list (list): The decoded list.
+        """
+        pass
+
+    @staticmethod
+    def _gen_layers(layers: list) -> Generator:
+        """Generate a list of Layer.
+
+        Args:
+            layers (list): List of layers descriptions.
+        Yields:
+            Layer: A single Layer object.
+        """
+        bias = [Neuron("bias")]
+        for layer in layers[:-1]:
+            n, m = layer["dimension"]
+            neuron = [Neuron(layer["activation"])]
+            if layer["matrix"] is None:
+                m += 1
+                matrix = np.random.randn(n + 1, m) * np.sqrt(2 / m)
+            else:
+                matrix = MLP.decode_matrix((n, m), layer["matrix"])
+                n -= 1
+            yield Layer(neuron * n + bias, matrix)
+        n, m = layers[-1]["dimension"]
+        neuron = [Neuron(layer["activation"])]
+        if layer["matrix"] is None:
+            m += 1
+            matrix = np.random.randn(n, m) * np.sqrt(2 / m)
+        else:
+            matrix = MLP.decode_matrix((n, m), layer["matrix"])
+        yield Layer(neuron * n, matrix)
 
 
 def main() -> int:

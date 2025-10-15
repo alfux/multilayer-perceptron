@@ -253,7 +253,6 @@ class Processor:
         Returns:
             ndarray: Decoded labels corresponding to each row of ``x``.
         """
-        print(x)
         return uniques[np.argmax(x, axis=1)]
 
     @staticmethod
@@ -267,18 +266,6 @@ class Processor:
     def identity(x: ndarray) -> ndarray:
         """Return the input unchanged."""
         return x
-
-    @staticmethod
-    def map(labels: str, x: ndarray) -> str:
-        """Map the highest value of an ndarray to a string.
-
-        Args:
-            labels (str): Labels for the mapping.
-            x (ndarray): A list of value (distribution).
-        Returns:
-            str: The corresponding string.
-        """
-        return labels[np.argmax(x)]
 
 
 def main() -> int:
