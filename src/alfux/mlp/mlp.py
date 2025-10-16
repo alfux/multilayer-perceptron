@@ -125,25 +125,22 @@ class MLP:
         desc = {
             "cost": self._cost.activation,
             "learning_rate": self._lr,
-            "preprocess": [
-                {"parameters": prepro[1], "activation": prepro[0].__name__}
-                for prepro in self._save_prepro
-            ],
-            "layers": [
-                {
-                    "dimension": layer.W.shape,
-                    "matrix": self.encode_matrix(layer.W),
-                    "activation": layer.activation
-                }
-                for layer in self._layers
-            ],
-            "postprocess": [
-                {"parameters": postpro[1], "activation": postpro[0].__name__}
-                for postpro in self._save_postpro
-            ]
+            "preprocess": [{
+                "parameters": self.encode_parameters(prepro[1]),
+                "activation": prepro[0].__name__
+            } for prepro in self._save_prepro],
+            "layers": [{
+                "dimension": layer.W.shape,
+                "matrix": self.encode_matrix(layer.W),
+                "activation": layer.activation
+            } for layer in self._layers],
+            "postprocess": [{
+                "parameters": self.encode_parameters(postpro[1]),
+                "activation": postpro[0].__name__
+            } for postpro in self._save_postpro]
         }
         with open(path, 'w') as file:
-            file.write(json.dumps(desc, indent=2, default=str))
+            file.write(json.dumps(desc, indent=2))
         return self
 
     def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
@@ -222,15 +219,15 @@ class MLP:
             MLP: Loaded instance.
         """
         arg = {
-            "preprocess": [
-                (getattr(Processor, x["activation"]), x["parameters"])
-                for x in model["preprocess"]
-            ],
+            "preprocess": [(
+                getattr(Processor, x["activation"]),
+                MLP.decode_parameters(x["parameters"])
+            ) for x in model["preprocess"]],
             "layers": list(MLP._gen_layers(model["layers"])),
-            "postprocess": [
-                (getattr(Processor, x["activation"]), x["parameters"])
-                for x in model["postprocess"]
-            ],
+            "postprocess": [(
+                getattr(Processor, x["activation"]),
+                MLP.decode_parameters(x["parameters"])
+            ) for x in model["postprocess"]],
             "cost": Neuron(model["cost"]),
             "learning_rate": model["learning_rate"]
         }
@@ -270,29 +267,54 @@ class MLP:
             ndarray: The Matrix.
         """
         mat = base64.b64decode(string)
-        return np.array(struct.unpack('d' * dim[0] * dim[1], mat)).reshape(dim)
+        unpacked = struct.unpack('d' * dim[0] * dim[1], mat)
+        return np.array(unpacked).reshape(dim)
 
     @staticmethod
-    def encode_parameters(parameters: list) -> str:
+    def encode_parameters(prm: list) -> list:
         """Encode list of parameters for pre/post process functions.
 
         Args:
-            parameters (list): The list of parameters.
-        Returns:
+            prm (list): The list of parameter Returns:
             str: The encoded parameters as a string.
         """
-        pass
+        for i, p in enumerate(prm):
+            match p:
+                case list():
+                    prm[i] = MLP.encode_parameters(p)
+                case np.ndarray():
+                    prm[i] = MLP.encode_parameters(p.tolist())
+                case float():
+                    prm[i] = 'd' + base64.b64encode(
+                        struct.pack('d', p)
+                    ).decode("ascii")
+                case str():
+                    prm[i] = 's' + str(len(p)) + 's' + base64.b64encode(
+                        struct.pack(str(len(p)) + 's', p.encode("utf-8"))
+                    ).decode("ascii")
+        return list(prm)
 
     @staticmethod
-    def decode_parameters(parameters: str) -> list:
+    def decode_parameters(prm: list) -> list:
         """Decode list of parameters for pre/post process functions.
 
         Args:
-            parameters (str): The encoded list.
+            parameters (list): The encoded list.
         Returns:
             list (list): The decoded list.
         """
-        pass
+        for i, p in enumerate(prm):
+            if isinstance(p, list):
+                prm[i] = MLP.decode_parameters(p)
+            elif isinstance(p, str):
+                if p[0] == 'd':
+                    prm[i] = struct.unpack('d', base64.b64decode(p[1:]))[0]
+                elif p[0] == 's':
+                    sep = p.split('s', maxsplit=2)
+                    prm[i] = struct.unpack(
+                        sep[1] + 's', base64.b64decode(sep[2])
+                    )[0]
+        return list(prm)
 
     @staticmethod
     def _gen_layers(layers: list) -> Generator:
@@ -315,12 +337,12 @@ class MLP:
                 n -= 1
             yield Layer(neuron * n + bias, matrix)
         n, m = layers[-1]["dimension"]
-        neuron = [Neuron(layer["activation"])]
-        if layer["matrix"] is None:
+        neuron = [Neuron(layers[-1]["activation"])]
+        if layers[-1]["matrix"] is None:
             m += 1
             matrix = np.random.randn(n, m) * np.sqrt(2 / m)
         else:
-            matrix = MLP.decode_matrix((n, m), layer["matrix"])
+            matrix = MLP.decode_matrix((n, m), layers[-1]["matrix"])
         yield Layer(neuron * n, matrix)
 
 

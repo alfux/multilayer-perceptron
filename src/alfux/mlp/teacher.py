@@ -9,7 +9,7 @@ import numpy as np
 from numpy import ndarray
 import pandas as pd
 
-from .mlp import MLP, Neuron
+from .mlp import MLP
 from .processor import Processor
 
 
