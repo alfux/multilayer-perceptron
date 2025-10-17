@@ -117,10 +117,10 @@ class Neuron:
     @staticmethod
     def dsoftmax(x: ndarray) -> ndarray:
         """Compute the Jacobian of softmax at ``x``."""
-        vector = np.exp(x)
+        vector = np.exp(x[0])
         vector /= np.sum(vector)
         Jacobian = -np.outer(vector, vector)
-        index = np.arange(len(x))
+        index = np.arange(len(vector))
         Jacobian[index, index] += vector
         return Jacobian
 

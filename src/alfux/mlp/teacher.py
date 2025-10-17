@@ -1,5 +1,6 @@
 import argparse as arg
 from argparse import Namespace
+from collections import deque
 from datetime import datetime
 import json
 import sys
@@ -9,6 +10,7 @@ import numpy as np
 from numpy import ndarray
 import pandas as pd
 
+from .display import Display
 from .mlp import MLP
 from .processor import Processor
 
@@ -39,6 +41,7 @@ class Teacher:
         self._data: ndarray = self._proc.data
         self._target: ndarray = self._proc.target
         self._config = config
+        self._display = Display(2, **self._config["display"])
 
     @property
     def mlp(self: "Teacher") -> MLP:
@@ -59,15 +62,36 @@ class Teacher:
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
         t = datetime.now()
+        if self._config["display"]:
+            self._mlp.preprocess = []
+            self._mlp.postprocess = []
+            y, x = self._sample(self._config["frac"])
+            self._display(self._mlp.cost.eval(y, self._mlp.eval(x))[0], 1)
         for i in range(self._config["epoch"]):
             print(f"\nEpoch {i}:")
-            self._mlp.update(*self._sample(self._config["frac"]))
+            self._epoch()
         self._mlp.preprocess = self._proc.preprocess
         self._mlp.postprocess = self._proc.postprocess
         self._training_time = datetime.now() - t
         if self._config["time"]:
             print("\n\tTraining time:", self._training_time)
         return self
+
+    def _epoch(self: "Teacher") -> None:
+        """Perform an epoch of the training routine."""
+        if self._config["display"]:
+            total, i = 0, 0
+            for value in self._mlp.update(*self._sample(self._config["frac"])):
+                self._display(value[0], 0)
+                total += value[0]
+                i += 1
+            self._display(total / i, 1)
+            # self._display.metrics()
+        else:
+            deque(
+                self._mlp.update(*self._sample(self._config["frac"])),
+                maxlen=0
+            )
 
     def _process(self: "Teacher", config: dict, model: list) -> None:
         """Process datas.
@@ -122,8 +146,8 @@ def get_args(description: str = "") -> Namespace:
         Namespace: Parsed CLI arguments.
     """
     av = arg.ArgumentParser(description=description)
-    av.add_argument("--debug", action="store_true", help="traceback mode")
     av.add_argument("json", help="Parameters file")
+    av.add_argument("--debug", action="store_true", help="traceback mode")
     return av.parse_args()
 
 
@@ -140,6 +164,7 @@ def main() -> int:
                   "drops": [0],
                   "epoch": 5,
                   "frac": 0.8,
+                  "display": true,
                   "time": true,
                   "model": "./model.json",
                   "learning_rate": 1e-3,
@@ -156,6 +181,7 @@ def main() -> int:
             configurations = json.load(file)
         for config in configurations:
             Teacher(config).teach().mlp.save(config["save"])
+        Display.pause()
         return 0
     except Exception as err:
         if "av" in locals() and hasattr(av, "debug") and av.debug:

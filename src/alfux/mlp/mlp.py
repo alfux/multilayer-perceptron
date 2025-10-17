@@ -143,7 +143,7 @@ class MLP:
             file.write(json.dumps(desc, indent=2))
         return self
 
-    def update(self: "MLP", truth: ndarray, data: ndarray) -> None:
+    def update(self: "MLP", truth: ndarray, data: ndarray) -> Generator:
         """Perform one epoch of stochastic gradient descent.
 
         Updates weights using the current cost function and Adam optimizer.
@@ -151,12 +151,17 @@ class MLP:
         Args:
             truth (ndarray): Empirical target values (rows are samples).
             data (ndarray): Input samples (rows).
+        Yields:
+            ndarray: The output of the cost function after a forward pass.
+
         """
         truth = np.atleast_2d(truth)[:, None, :]
         data = np.atleast_2d(data)[:, None, :]
         for (i, (y, x)) in enumerate(zip(truth, data)):
             print(f"\rPerforming iteration: {i}", end='')
-            self._backpropagate(y, np.fromiter(self._forward_pass(x), ndarray))
+            forward_pass = np.fromiter(self._forward_pass(x), ndarray)
+            yield self._cost.eval(y, forward_pass[-1])
+            self._backpropagate(y, forward_pass)
             self._pb1 *= self._b1
             self._pb2 *= self._b2
 
@@ -317,33 +322,38 @@ class MLP:
         return list(prm)
 
     @staticmethod
-    def _gen_layers(layers: list) -> Generator:
+    def _gen_layers(descriptions: list) -> Generator:
         """Generate a list of Layer.
 
         Args:
-            layers (list): List of layers descriptions.
+            descriptions (list): List of layers descriptions.
         Yields:
             Layer: A single Layer object.
         """
-        bias = [Neuron("bias")]
-        for layer in layers[:-1]:
-            n, m = layer["dimension"]
-            neuron = [Neuron(layer["activation"])]
-            if layer["matrix"] is None:
-                m += 1
-                matrix = np.random.randn(n + 1, m) * np.sqrt(2 / m)
-            else:
-                matrix = MLP.decode_matrix((n, m), layer["matrix"])
-                n -= 1
-            yield Layer(neuron * n + bias, matrix)
-        n, m = layers[-1]["dimension"]
-        neuron = [Neuron(layers[-1]["activation"])]
-        if layers[-1]["matrix"] is None:
-            m += 1
+        for desc in descriptions[:-1]:
+            yield MLP._create_layer(desc)
+        yield MLP._create_layer(descriptions[-1])
+
+    @staticmethod
+    def _create_layer(desc: dict) -> Layer:
+        """Create a layer based on its description.
+
+        Args:
+            desc (dict): The description.
+        Returns:
+            Layer: The layer.
+        """
+        n, m = desc["dimension"]
+        neuron = [Neuron(desc["activation"])]
+        if desc["matrix"] is None:
             matrix = np.random.randn(n, m) * np.sqrt(2 / m)
         else:
-            matrix = MLP.decode_matrix((n, m), layers[-1]["matrix"])
-        yield Layer(neuron * n, matrix)
+            matrix = MLP.decode_matrix((n, m), desc["matrix"])
+        if desc["mono"]:
+            neurons = neuron
+        else:
+            neurons = neuron * (n - 1) + [Neuron("bias")]
+        return Layer(neurons, matrix)
 
 
 def main() -> int:

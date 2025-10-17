@@ -33,6 +33,7 @@ class Layer:
                 self._neurons: Neuron = neurons[0]
                 self.eval = self._vect_eval
                 self.wdiff = self._vect_wdiff
+                self._activation = self._neurons.activation
             case _:
                 if len(neurons) != len(weights):
                     print(weights.shape, len(neurons), sep="\n")
@@ -40,7 +41,7 @@ class Layer:
                 self._neurons: list[Neuron] = neurons
                 self.eval = self._eval
                 self.wdiff = self._wdiff
-        self._activation = self._neurons[0].activation
+                self._activation = self._neurons[0].activation
 
     def __len__(self: "Layer") -> int:
         """Return the number of neurons in the layer."""
