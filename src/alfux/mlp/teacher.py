@@ -72,7 +72,7 @@ class Teacher:
             self._mlp.preprocess = []
             self._mlp.postprocess = []
             y, x = self._sample(self._config["frac"])
-            self._display(self._mlp.cost.eval(y, self._mlp.eval(x))[0], 1)
+            self._display.loss(self._mlp.cost.eval(y, self._mlp.eval(x))[0], 1)
         cost = float("+inf")
         for i in range(self._config["epoch"]):
             print(f"\nEpoch {i}:")
@@ -113,51 +113,61 @@ class Teacher:
             float: The cost at the end of the epoch.
         """
         if self._config["display"]:
-            total, i = 0, 0
             for value in self._mlp.update(*self._sample(self._config["frac"])):
-                self._display(value[0], 0)
-                total += value[0]
-                i += 1
-            cost = total / i
-            self._display(cost, 1)
-            self._display_metrics(cost)
-            return cost
+                self._display.loss(value[0], 0)
+            out = self._mlp.eval(self._data)
+            cost = self._mlp.cost.eval(self._target, out)
+            self._display_metrics(out, cost[0])
         else:
-            cost = deque(self._mlp.update(*self._sample(self._config["frac"])))
-            return np.sum(cost) / len(cost)
+            deque(
+                self._mlp.update(*self._sample(self._config["frac"])), maxlen=0
+            )
+            out = self._mlp.eval(self._data)
+            cost = self._mlp.cost.eval(self._target, out)
+        return cost[0]
 
-    def _display_metrics(self: "Teacher", cost: float) -> None:
+    def _display_metrics(self: "Teacher", out: ndarray, cost: float) -> None:
         """Displays metrics during the training.
 
         Args:
+            out (ndarray): output at the end of epoch.
             cost (float): loss value over the dataset at the last update.
         """
-        vloss, accuracy = self._validation()
+        # HERE REORGANIZE COMPUTATION OF COST
+        dloss, dacc, vloss, vacc = self._validation(out)
         seconds = (datetime.now() - self._t).total_seconds()
         metrics = {
-            "Time": "{:.3f}s".format(seconds),
-            "DLoss": "{:.3f}".format(cost),
-            "VLoss": "{:.3f}".format(vloss),
-            "VAcc": "{:.3f}".format(accuracy),
-            "|Grad|": "{:.3f}".format(self._mlp.last_gradient_norm)
+            "Time":  seconds,
+            "DLoss": cost,
+            "VLoss": vloss,
+            "Dacc": dacc,
+            "VAcc": vacc,
+            "|Grad|": self._mlp.last_gradient_norm
         }
+        for field, value in metrics.items():
+            print('\t' + field + ": " + value)
+        self._display.loss(cost[0], 1)
         self._display.metrics(**metrics)
 
-    def _validation(self: "Teacher") -> list:
-        """Compute validation loss.
+    def _validation(self: "Teacher", dout: ndarray) -> list:
+        """Compute data accuracy, validation loss and validation accuracy.
 
         Returns:
             list: [validation loss, accuracy]
         """
-        out = self._mlp.eval(self._vdata)
-        vloss = self._mlp.cost.eval(self._vtarget, out)
+        vout = self._mlp.eval(self._vdata)
         if any(fc[0].__name__ == "revonehot" for fc in self._proc.postprocess):
-            out = Processor.revonehot(self._proc.unique, out)
-            tgt = Processor.revonehot(self._proc.unique, self._vtarget)
-            accuracy = (tgt == out).sum() / out.shape[0]
+            dout = Processor.revonehot(self._proc.unique, dout)
+            dtgt = Processor.revonehot(self._proc.unique, self._target)
+            dacc = (dtgt == dout).sum() / dout.shape[0]
+            vout = Processor.revonehot(self._proc.unique, vout)
+            vtgt = Processor.revonehot(self._proc.unique, self._vtarget)
+            vacc = (vtgt == vout).sum() / vout.shape[0]
         else:
-            accuracy = Neuron.MSE(self._vtarget, out)
-        return vloss[0], accuracy
+            dacc = Neuron.MSE(self._target, dout)
+            vacc = Neuron.MSE(self._vtarget, vout)
+        vloss = self._mlp.cost.eval(self._vtarget, vout)
+        return dacc, vloss[0], vacc
 
     def _process(self: "Teacher", config: dict, model: list) -> None:
         """Process datas.

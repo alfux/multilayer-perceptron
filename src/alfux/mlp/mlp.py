@@ -178,6 +178,7 @@ class MLP:
                 gradient += self._backpropagate(y, forward_pass)
             self._pb1 *= self._b1
             self._pb2 *= self._b2
+        print()
         gradient /= data.shape[0]
         self._last_gradient = gradient
 
