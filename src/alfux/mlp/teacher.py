@@ -11,7 +11,7 @@ from numpy import ndarray
 import pandas as pd
 
 from .display import Display
-from .mlp import MLP
+from .mlp import MLP, Neuron
 from .processor import Processor
 
 
@@ -133,12 +133,13 @@ class Teacher:
             cost (float): loss value over the dataset at the last update.
         """
         vloss, accuracy = self._validation()
+        seconds = (datetime.now() - self._t).total_seconds()
         metrics = {
-            "Time": datetime.now() - self._t,
-            "Data loss": cost,
-            "Gradient norm": self._mlp.last_gradient_norm,
-            "Validation loss": vloss,
-            "Validation accuracy": accuracy
+            "Time": "{:.3f}s".format(seconds),
+            "DLoss": "{:.3f}".format(cost),
+            "VLoss": "{:.3f}".format(vloss),
+            "VAcc": "{:.3f}".format(accuracy),
+            "|Grad|": "{:.3f}".format(self._mlp.last_gradient_norm)
         }
         self._display.metrics(**metrics)
 
@@ -150,8 +151,13 @@ class Teacher:
         """
         out = self._mlp.eval(self._vdata)
         vloss = self._mlp.cost.eval(self._vtarget, out)
-        accuracy = (self._vtarget == out).all(axis=1).sum() / out.shape[0]
-        return vloss, accuracy
+        if any(fc[0].__name__ == "revonehot" for fc in self._proc.postprocess):
+            out = Processor.revonehot(self._proc.unique, out)
+            tgt = Processor.revonehot(self._proc.unique, self._vtarget)
+            accuracy = (tgt == out).sum() / out.shape[0]
+        else:
+            accuracy = Neuron.MSE(self._vtarget, out)
+        return vloss[0], accuracy
 
     def _process(self: "Teacher", config: dict, model: list) -> None:
         """Process datas.

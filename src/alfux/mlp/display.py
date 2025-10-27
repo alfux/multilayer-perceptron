@@ -6,8 +6,6 @@ import time
 
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as pch
-# from matplotlib import Event
 import numpy as np
 from numpy import ndarray
 
@@ -21,6 +19,7 @@ class Display:
     _max = None
     _tmax = None
     _packs = None
+    _axes_max_zorder = None
 
     def __init__(
             self: "Display", n: int = 1, param: list = [], margin: float = 0.1,
@@ -68,7 +67,7 @@ class Display:
         ylim = (Display._min - self._margin, Display._max + self._margin)
         Display._tmax = np.max([Display._tmax, self._times[i][-1]])
         self._axes.set_ylim(*ylim)
-        self._axes.set_xlim(0, Display._tmax)
+        self._axes.set_xlim(0, 1.1 * Display._tmax)
         self._lines[i].set_data(self._times[i], self._values[i])
         plt.draw()
         plt.pause(1e-15)
@@ -81,20 +80,25 @@ class Display:
         """
         abs = time.time() - self._start
         color = self._param[-1].get("color", "grey")
-        anchor = (abs, 0.2)
-        rect = pch.Rectangle(
-            anchor, 2.5, 0.1, edgecolor=color, facecolor="white", picker=True,
-            zorder=1
-        )
         vline = Display._axes.axvline(
             abs, color=color, picker=True, zorder=0, alpha=0.25
         )
-        patch = Display._axes.add_patch(rect)
-        text = Display._axes.text(
-            *anchor, Display.format_dict(metrics), picker=True, zorder=1
+        text = Display._axes.annotate(
+            Display.format_dict(metrics),
+            xy=(abs, self._max),
+            xycoords="data",
+            bbox=dict(
+                boxstyle="round,pad=0.3",
+                edgecolor=color,
+                facecolor="white",
+            ),
+            ha="left",
+            va="bottom",
+            zorder=Display._axes_max_zorder + 1,
+            picker=True,
         )
-        self._pack["click"] += [vline, patch, text]
-        self._pack["move"] += [patch, text]
+        self._pack["click"] += [vline, text]
+        self._pack["move"] += [text]
         plt.draw()
         plt.pause(1e-15)
 
@@ -106,6 +110,10 @@ class Display:
         """
         Display._fig = plt.figure(figsize=(16, 9))
         Display._axes = Display._fig.add_axes((0.1, 0.1, 0.8, 0.8))
+        Display._axes_max_zorder = Display._axes.zorder
+        for spine in Display._axes.spines.values():
+            if Display._axes_max_zorder < spine.zorder:
+                Display._axes_max_zorder = spine.zorder
         Display._min, Display._max, Display._tmax = 0, 0, 30
         Display._fig.canvas.manager.set_window_title(title)
         Display._axes.set_title(title)
@@ -136,11 +144,11 @@ class Display:
         artist = evt.artist
         for pack in Display._packs:
             if artist in pack["click"]:
-                for art in pack["move"][2:]:
-                    art.set_zorder(2)
+                for art in pack["move"]:
+                    art.set_zorder(Display._axes_max_zorder + 2)
             else:
-                for art in pack["move"][2:]:
-                    art.set_zorder(1)
+                for art in pack["move"]:
+                    art.set_zorder(Display._axes_max_zorder + 1)
         plt.draw()
 
     @staticmethod

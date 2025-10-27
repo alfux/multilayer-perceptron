@@ -270,7 +270,8 @@ class MLP:
                 MLP.decode_parameters(x["parameters"])
             ) for x in model["postprocess"]],
             "cost": Neuron(model["cost"]),
-            "learning_rate": model["learning_rate"]
+            "learning_rate": model.get("learning_rate", 1e-3),
+            "adam": model.get("adam", False)
         }
         return MLP(**arg)
 
