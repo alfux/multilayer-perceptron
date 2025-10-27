@@ -17,7 +17,8 @@ class Processor:
     """
 
     def __init__(
-            self: "Processor", dataset: DataFrame, target: str | int
+            self: "Processor", dataset: DataFrame, target: str | int,
+            valid: DataFrame = None
     ) -> None:
         """Create a preprocessor for a dataset.
 
@@ -27,6 +28,11 @@ class Processor:
         """
         self._target: DataFrame = dataset.loc[:, [target]]
         self._data: DataFrame = dataset.drop([target], axis=1)
+        if valid is not None:
+            self._vtarget: DataFrame = valid.loc[:, [target]]
+            self._vdata: DataFrame = valid.drop([target], axis=1)
+        else:
+            self._vtarget, self._vdata = None, None
         constant = (self._data == self._data.iloc[0]).all(axis=0)
         self._data = self._data.loc[:, ~constant]
         self._stat: DataFrame = Statistics(self._data).stats
@@ -48,6 +54,19 @@ class Processor:
             self._target = value
 
     @property
+    def vtarget(self: "Processor") -> ndarray:
+        """Get the validation target values as a NumPy array."""
+        return self._vtarget.to_numpy()
+
+    @vtarget.setter
+    def vtarget(self: "Processor", value: DataFrame | ndarray) -> None:
+        """Set the current validation target values."""
+        if isinstance(value, ndarray):
+            self._vtarget = DataFrame(value)
+        else:
+            self._vtarget = value
+
+    @property
     def data(self: "Processor") -> ndarray:
         """Get the current feature matrix as a NumPy array."""
         return self._data.to_numpy()
@@ -60,6 +79,20 @@ class Processor:
         else:
             self._data = value
         self._stat = Statistics(self._data).stats
+
+    @property
+    def vdata(self: "Processor") -> ndarray:
+        """Get the current validation feature matrix as a NumPy array."""
+        return self._vdata.to_numpy()
+
+    @vdata.setter
+    def vdata(self: "Processor", value: DataFrame | ndarray) -> None:
+        """Set the current validation feature matrix and recompute stats."""
+        if isinstance(value, ndarray):
+            self._vdata = DataFrame(value)
+        else:
+            self._vdata = value
+        self._stat = Statistics(self._vdata).stats
 
     @property
     def unique(self: "Processor") -> ndarray:
@@ -89,6 +122,10 @@ class Processor:
             self._unique = uni
             new_postprocess = [(Processor.revonehot, [uni])]
             self._postprocess = new_postprocess + self._postprocess
+            if self._vtarget is not None:
+                (uni, inv) = np.unique(self._vtarget, return_inverse=True)
+                self._vtarget = np.eye(len(uni))[inv.flatten()]
+                self._vtarget = DataFrame(self._vtarget)
         return self
 
     def pre_standardize(self: "Processor") -> "Processor":
@@ -100,6 +137,7 @@ class Processor:
         mean = self._stat.loc["Mean"].to_numpy()
         std = self._stat.loc["Std"].to_numpy()
         self.data = Processor.standardize(mean, std, self._data)
+        self.vdata = Processor.standardize(mean, std, self._vdata)
         self._preprocess += [(Processor.standardize, [mean, std])]
         return self
 
@@ -113,6 +151,7 @@ class Processor:
         mean = stats.loc["Mean"].to_numpy()
         std = stats.loc["Std"].to_numpy()
         self.target = Processor.standardize(mean, std, self._target)
+        self.vtarget = Processor.standardize(mean, std, self._vtarget)
         new_postprocess = [(Processor.unstdardize, [mean, std])]
         self._postprocess = new_postprocess + self._postprocess
         return self
@@ -132,6 +171,7 @@ class Processor:
         m = self._stat.loc["Min"].to_numpy()
         s = self._stat.loc["Max"].to_numpy() - m
         self.data = Processor.normalize(m, s, b, self._data)
+        self.vdata = Processor.normalize(m, s, b, self._vdata)
         self._preprocess += [(Processor.normalize, [m, s, b])]
         return self
 
@@ -147,6 +187,7 @@ class Processor:
         m = stats.loc["Min"].to_numpy()
         s = stats.loc["Max"].to_numpy() - m
         self.target = Processor.normalize(m, s, b, self._target)
+        self.vtarget = Processor.normalize(m, s, b, self._vtarget)
         new_postprocess = [(Processor.unrmalize, [m, s, b])]
         self._postprocess = new_postprocess + self._postprocess
         return self
@@ -154,6 +195,7 @@ class Processor:
     def pre_bias(self: "Processor") -> "Processor":
         """Adds a bias component at the end of the vector of the dataset."""
         self.data = Processor.add_bias(self._data)
+        self.vdata = Processor.add_bias(self._vdata)
         self._preprocess += [(Processor.add_bias, [])]
         return self
 

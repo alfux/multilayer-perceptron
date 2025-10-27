@@ -6,6 +6,8 @@ import time
 
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as pch
+# from matplotlib import Event
 import numpy as np
 from numpy import ndarray
 
@@ -15,6 +17,10 @@ class Display:
 
     _fig = None
     _axes = None
+    _min = None
+    _max = None
+    _tmax = None
+    _packs = None
 
     def __init__(
             self: "Display", n: int = 1, param: list = [], margin: float = 0.1,
@@ -28,22 +34,19 @@ class Display:
         """
         plt.ion()
         if Display._fig is None:
-            Display._fig = plt.figure(figsize=(16, 9))
-        Display._fig.canvas.manager.set_window_title(title)
-        if Display._axes is None:
-            Display._axes = Display._fig.add_axes((0.1, 0.1, 0.8, 0.8))
-        Display._axes.set_title(title)
-        self._start = time.time()
-        self._margin = margin
+            self._init_display(title)
+        self._start, self._margin = time.time(), margin
         self._times = [[] for _ in range(n)]
         self._values = [[] for _ in range(n)]
-        self._min, self._max = 0, 0
         if len(param) < n:
             param += [{}] * (n - len(param))
+        self._param = param
         self._lines = [
-            self._axes.plot(t, v, **p)[0]
-            for t, v, p in zip(self._times, self._values, param)
+            self._axes.plot(t, v, **p, picker=True, zorder=0)[0]
+            for t, v, p in zip(self._times, self._values, self._param)
         ]
+        self._pack = {"click": [_ for _ in self._lines], "move": []}
+        Display._packs.append(self._pack)
         if Display._axes.get_legend():
             Display._axes.get_legend().remove()
             plt.draw()
@@ -58,15 +61,87 @@ class Display:
         """
         self._times[i].append(time.time() - self._start)
         self._values[i].append(value.astype(float))
-        if value < self._min:
-            self._min = value
-        elif value > self._max:
-            self._max = value
-        self._axes.set_ylim(self._min - self._margin, self._max + self._margin)
-        self._axes.set_xlim(0, np.max([30, self._times[i][-1]]))
+        if value < Display._min:
+            Display._min = value
+        elif value > Display._max:
+            Display._max = value
+        ylim = (Display._min - self._margin, Display._max + self._margin)
+        Display._tmax = np.max([Display._tmax, self._times[i][-1]])
+        self._axes.set_ylim(*ylim)
+        self._axes.set_xlim(0, Display._tmax)
         self._lines[i].set_data(self._times[i], self._values[i])
         plt.draw()
         plt.pause(1e-15)
+
+    def metrics(self: "Display", **metrics: dict) -> None:
+        """Separator line for epochs.
+
+        Args:
+            x (float): The abscissa of the vertical line.
+        """
+        abs = time.time() - self._start
+        color = self._param[-1].get("color", "grey")
+        anchor = (abs, 0.2)
+        rect = pch.Rectangle(
+            anchor, 2.5, 0.1, edgecolor=color, facecolor="white", picker=True,
+            zorder=1
+        )
+        vline = Display._axes.axvline(
+            abs, color=color, picker=True, zorder=0, alpha=0.25
+        )
+        patch = Display._axes.add_patch(rect)
+        text = Display._axes.text(
+            *anchor, Display.format_dict(metrics), picker=True, zorder=1
+        )
+        self._pack["click"] += [vline, patch, text]
+        self._pack["move"] += [patch, text]
+        plt.draw()
+        plt.pause(1e-15)
+
+    def _init_display(self: "Display", title: str) -> None:
+        """Initialize the display class.
+
+        Args:
+            title (str): Title of the display.
+        """
+        Display._fig = plt.figure(figsize=(16, 9))
+        Display._axes = Display._fig.add_axes((0.1, 0.1, 0.8, 0.8))
+        Display._min, Display._max, Display._tmax = 0, 0, 30
+        Display._fig.canvas.manager.set_window_title(title)
+        Display._axes.set_title(title)
+        Display._packs = []
+        Display._fig.canvas.mpl_connect("pick_event", Display.picker_hook)
+
+    @staticmethod
+    def format_dict(jso: dict) -> str:
+        """Format a dict in a line by line string.
+
+        Args:
+            jso (dict): The dictionary to format.
+        Returns:
+            str: The formated string.
+        """
+        string = ''
+        for key, value in jso.items():
+            string += str(key) + ': ' + str(value) + '\n'
+        return string
+
+    @staticmethod
+    def picker_hook(evt) -> None:
+        """Hook for hover to foreground readings.
+
+        Args:
+            evt (): The event triggering the hook.
+        """
+        artist = evt.artist
+        for pack in Display._packs:
+            if artist in pack["click"]:
+                for art in pack["move"][2:]:
+                    art.set_zorder(2)
+            else:
+                for art in pack["move"][2:]:
+                    art.set_zorder(1)
+        plt.draw()
 
     @staticmethod
     def pause() -> None:

@@ -30,18 +30,24 @@ class Teacher:
         """
         if config["header"]:
             self._data = pd.read_csv(config["data"])
+            self._vdata = pd.read_csv(config["validation"])
         else:
             self._data = pd.read_csv(config["data"], header=None)
+            self._vdata = pd.read_csv(config["validation"], header=None)
         if "drops" in config:
             self._data = self._data.drop(config["drops"], axis=1)
+            self._vdata = self._vdata.drop(config["drops"], axis=1)
         with open(config["model"]) as file:
             model = json.loads(file.read())
         self._mlp: MLP = MLP.loadd(model)
         self._process(config, model)
         self._data: ndarray = self._proc.data
+        self._vdata: ndarray = self._proc.vdata
         self._target: ndarray = self._proc.target
+        self._vtarget: ndarray = self._proc.vtarget
         self._config = config
         self._display = Display(2, **self._config["display"])
+        self._t = datetime.now()
 
     @property
     def mlp(self: "Teacher") -> MLP:
@@ -61,37 +67,91 @@ class Teacher:
         """
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
-        t = datetime.now()
+        self._t = datetime.now()
         if self._config["display"]:
             self._mlp.preprocess = []
             self._mlp.postprocess = []
             y, x = self._sample(self._config["frac"])
             self._display(self._mlp.cost.eval(y, self._mlp.eval(x))[0], 1)
+        cost = float("+inf")
         for i in range(self._config["epoch"]):
             print(f"\nEpoch {i}:")
-            self._epoch()
+            prev = cost
+            cost = self._epoch()
+            if self._early_stopping(i, prev, cost):
+                self._mlp.revert()
+                break
         self._mlp.preprocess = self._proc.preprocess
         self._mlp.postprocess = self._proc.postprocess
-        self._training_time = datetime.now() - t
+        self._training_time = datetime.now() - self._t
         if self._config["time"]:
             print("\n\tTraining time:", self._training_time)
         return self
 
-    def _epoch(self: "Teacher") -> None:
-        """Perform an epoch of the training routine."""
+    def _early_stopping(
+            self: "Teacher", i: int, prev: float, cost: float
+    ) -> bool:
+        """Stop the algorithm if needed.
+
+        Args:
+            i (int): Epoch iteration.
+            prev (float): The previous cost.
+            cost (float): The current cost.
+        Returns:
+            bool: True if the previous cost is lower than the current one.
+        """
+        return (
+            "early_stopping" in self._config
+            and i > self._config["early_stopping"]
+            and prev < cost
+        )
+
+    def _epoch(self: "Teacher") -> float:
+        """Perform an epoch of the training routine.
+
+        Returns:
+            float: The cost at the end of the epoch.
+        """
         if self._config["display"]:
             total, i = 0, 0
             for value in self._mlp.update(*self._sample(self._config["frac"])):
                 self._display(value[0], 0)
                 total += value[0]
                 i += 1
-            self._display(total / i, 1)
-            # self._display.metrics()
+            cost = total / i
+            self._display(cost, 1)
+            self._display_metrics(cost)
+            return cost
         else:
-            deque(
-                self._mlp.update(*self._sample(self._config["frac"])),
-                maxlen=0
-            )
+            cost = deque(self._mlp.update(*self._sample(self._config["frac"])))
+            return np.sum(cost) / len(cost)
+
+    def _display_metrics(self: "Teacher", cost: float) -> None:
+        """Displays metrics during the training.
+
+        Args:
+            cost (float): loss value over the dataset at the last update.
+        """
+        vloss, accuracy = self._validation()
+        metrics = {
+            "Time": datetime.now() - self._t,
+            "Data loss": cost,
+            "Gradient norm": self._mlp.last_gradient_norm,
+            "Validation loss": vloss,
+            "Validation accuracy": accuracy
+        }
+        self._display.metrics(**metrics)
+
+    def _validation(self: "Teacher") -> list:
+        """Compute validation loss.
+
+        Returns:
+            list: [validation loss, accuracy]
+        """
+        out = self._mlp.eval(self._vdata)
+        vloss = self._mlp.cost.eval(self._vtarget, out)
+        accuracy = (self._vtarget == out).all(axis=1).sum() / out.shape[0]
+        return vloss, accuracy
 
     def _process(self: "Teacher", config: dict, model: list) -> None:
         """Process datas.
@@ -100,7 +160,7 @@ class Teacher:
             config (dict): Configuration.
             model (list): Model description.
         """
-        self._proc = Processor(self._data, config["target"])
+        self._proc = Processor(self._data, config["target"], valid=self._vdata)
         for pre in model["preprocess"]:
             match pre["activation"]:
                 case "normalize":

@@ -38,6 +38,7 @@ class MLP:
             postprocess (list[Callable]): Postprocessing pipeline.
         """
         self._layers: list[Layer] = layers
+        self._last_matrices: list[ndarray] = [x.W for x in self._layers]
         self._cost: Neuron = cost
         self._lr: float = kw.get("learning_rate", 1e-3)
         (self._b1, self._b2) = (kw.get("b1", 0.9), kw.get("b2", 0.999))
@@ -46,6 +47,11 @@ class MLP:
         self._v: list = [np.zeros(layer.W.shape) for layer in layers]
         self.preprocess = kw.get("preprocess", [])
         self.postprocess = kw.get("postprocess", [])
+        self._last_gradient = None
+        if kw.get("adam", False):
+            self._update_layer = self.__update_layer_adam
+        else:
+            self._update_layer = self.__update_layer
 
     def __len__(self: "MLP") -> int:
         """Return the number of layers in the MLP."""
@@ -95,6 +101,11 @@ class MLP:
     def learning_rate(self: "MLP", value: float) -> None:
         """Set the learning rate."""
         self._lr = value
+
+    @property
+    def last_gradient_norm(self: "MLP") -> float:
+        """Gets the last computed gradient's norm."""
+        return np.linalg.norm(self._last_gradient)
 
     def eval(self: "MLP", x: ndarray) -> ndarray:
         """Evaluate the MLP output.
@@ -153,25 +164,37 @@ class MLP:
             data (ndarray): Input samples (rows).
         Yields:
             ndarray: The output of the cost function after a forward pass.
-
         """
         truth = np.atleast_2d(truth)[:, None, :]
         data = np.atleast_2d(data)[:, None, :]
+        gradient = None
         for (i, (y, x)) in enumerate(zip(truth, data)):
             print(f"\rPerforming iteration: {i}", end='')
             forward_pass = np.fromiter(self._forward_pass(x), ndarray)
             yield self._cost.eval(y, forward_pass[-1])
-            self._backpropagate(y, forward_pass)
+            if gradient is None:
+                gradient = self._backpropagate(y, forward_pass)
+            else:
+                gradient += self._backpropagate(y, forward_pass)
             self._pb1 *= self._b1
             self._pb2 *= self._b2
+        gradient /= data.shape[0]
+        self._last_gradient = gradient
 
-    def _backpropagate(self: "MLP", y: ndarray, input: ndarray) -> None:
+    def revert(self: "MLP") -> None:
+        """Reverts the mlp to the last computed matrices."""
+        for i, layer in enumerate(self._layers):
+            layer.W = self._last_matrices[i]
+
+    def _backpropagate(self: "MLP", y: ndarray, input: ndarray) -> ndarray:
         """Backpropagate gradients and update internal moments.
 
         Args:
             y (ndarray): Truth values.
             input (ndarray): Sequence of inputs/outputs per layer, from input
                 to final output.
+        Returns:
+            ndarray: The computed gradient.
         """
         dk = self._layers[-1].wdiff(input[-2])
         dk = dk @ self._cost.diff(y, input[-1]).T
@@ -179,9 +202,28 @@ class MLP:
         self._update_layer(-1, np.outer(dk, input[-2]))
         for i in range(len(self._layers) - 2, -1, -1):
             dk = self._layers[i].wdiff(input[i]) @ self._layers[i + 1].W.T @ dk
-            self._update_layer(i, np.outer(dk, input[i]))
+            gradient = np.outer(dk, input[i])
+            self._update_layer(i, gradient)
+        return gradient
 
-    def _update_layer(self: "MLP", i: int, gradient: ndarray) -> None:
+    def _forward_pass(self: "MLP", x: ndarray) -> Generator:
+        """Yield inputs for each layer including the final output."""
+        for layer in self._layers:
+            yield x
+            x = layer.eval(x)
+        yield x
+
+    def __update_layer(self: "MLP", i: int, gradient: ndarray) -> None:
+        """Update a layer's weights using Adam.
+
+        Args:
+            i (int): Layer index.
+            gradient (ndarray): Gradient for this layer.
+        """
+        self._last_matrices[i] = self._layers[i].W
+        self._layers[i].W -= self._lr * gradient
+
+    def __update_layer_adam(self: "MLP", i: int, gradient: ndarray) -> None:
         """Update a layer's weights using Adam.
 
         Args:
@@ -192,14 +234,8 @@ class MLP:
         self._v[i] = self._b2 * self._v[i] + (1 - self._b2) * gradient ** 2
         m = self._m[i] / (1 - self._pb1)
         v = np.sqrt(self._v[i] / (1 - self._pb2)) + 1e-15
+        self._last_matrices[i] = self._layers[i].W
         self._layers[i].W -= self._lr * m / v
-
-    def _forward_pass(self: "MLP", x: ndarray) -> Generator:
-        """Yield inputs for each layer including the final output."""
-        for layer in self._layers:
-            yield x
-            x = layer.eval(x)
-        yield x
 
     @staticmethod
     def loadf(file: str) -> "MLP":
