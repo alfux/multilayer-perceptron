@@ -105,6 +105,8 @@ class MLP:
     @property
     def last_gradient_norm(self: "MLP") -> float:
         """Gets the last computed gradient's norm."""
+        if self._last_gradient is None:
+            return None
         return np.linalg.norm(self._last_gradient)
 
     def eval(self: "MLP", x: ndarray) -> ndarray:

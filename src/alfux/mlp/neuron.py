@@ -133,7 +133,11 @@ class Neuron:
 
     @staticmethod
     def dCELF(y: ndarray, x: ndarray) -> ndarray:
-        """Derivative of the cross-entropy loss function."""
+        """Derivative of the cross-entropy loss function.
+
+        This function isn't generalized correctly and only works for one line
+        of x, meaning x.shape[0] = 1
+        """
         return -np.sum(y / (x + 1e-15), keepdims=True, axis=0) / x.shape[0]
 
     @staticmethod

@@ -13,20 +13,16 @@ from numpy import ndarray
 class Display:
     """Manage display of the perceptron cost functions."""
 
-    _fig1 = None
-    _fig2 = None
-    _axes1 = None
-    _axes2 = None
-    _min1 = None
-    _min2 = None
-    _max1 = None
-    _max2 = None
+    _fig = None
+    _axes = None
+    _min = None
+    _max = None
     _tmax = None
     _packs = None
     _axes_max_zorder = None
 
     def __init__(
-            self: "Display", n: int = 1, param: list = [], margin: float = 0.1,
+            self: "Display", n: int = 1, color: str = "grey", margin: float = 0.1,
             title: str = "Display"
     ) -> None:
         """Initialize the display.
@@ -36,54 +32,61 @@ class Display:
             margin (float): Top / bottem space margin. (default 0.1)
         """
         plt.ion()
-        if Display._fig1 is None:
+        if Display._fig is None:
             self._init_display(title)
         self._start, self._margin = time.time(), margin
-        self._times = [[] for _ in range(n)]
-        self._values = [[] for _ in range(n)]
-        if len(param) < n:
-            param += [{}] * (n - len(param))
-        self._param = param
-        self._lines = [
-            self._axes1.plot(t, v, **p, picker=True, zorder=0)[0]
-            for t, v, p in zip(self._times, self._values, self._param)
-        ]
-        self._pack = {"click": [_ for _ in self._lines], "move": []}
+        self._t = [[[] for _ in range(n)], [[] for _ in range(n)]]
+        self._v = [[[] for _ in range(n)], [[] for _ in range(n)]]
+        self._color = []
+        self._lines = self._create_lines()
+        self._pack = {"click": [_ for _ in self._lines[0]], "move": []}
         Display._packs.append(self._pack)
-        if Display._axes1.get_legend():
-            Display._axes1.get_legend().remove()
-            Display._axes2.get_legend().remove()
-            plt.draw()
-        Display._axes1.legend()
-        Display._axes2.legend()
+        if Display._axes[0].get_legend():
+            Display._axes[0].get_legend().remove()
+            Display._axes[1].get_legend().remove()
+            self._draw()
+        Display._axes[0].legend()
+        Display._axes[1].legend()
 
     def loss(self: "Display", value: ndarray, i: int = 0) -> None:
-        """Update the display with the new loss value.
+        """Update the display with the new value.
 
         Args:
             value (ndarra): The new value.
             i (int): Curve index.
         """
-        self._times[i].append(time.time() - self._start)
-        self._values[i].append(value.astype(float))
-        if value < Display._min1:
-            Display._min1 = value
-        elif value > Display._max1:
-            Display._max1 = value
-        ylim = (Display._min1 - self._margin, Display._max1 + self._margin)
-        Display._tmax = np.max([Display._tmax, self._times[i][-1]])
-        self._axes1.set_ylim(*ylim)
-        self._axes1.set_xlim(0, 1.1 * Display._tmax)
-        self._lines[i].set_data(self._times[i], self._values[i])
-        plt.draw()
-        plt.pause(1e-15)
+        self._t[0][i].append(time.time() - self._start)
+        self._v[0][i].append(value.astype(float))
+        if value < Display._min[0]:
+            Display._min[0] = value
+        elif value > Display._max[0]:
+            Display._max[0] = value
+        ylim = (Display._min[0] - self._margin, Display._max[0] + self._margin)
+        Display._tmax[0] = np.max([Display._tmax[0], self._t[0][i][-1]])
+        self._axes[0].set_ylim(*ylim)
+        self._axes[0].set_xlim(0, 1.1 * Display._tmax[0])
+        self._lines[0][i].set_data(self._t[0][i], self._v[0][i])
+        self._draw()
 
-    def accuracy(self: "Display", value: ndarray) -> None:
-        """Update the display with the new accuracy value.
+    def accuracy(self: "Display", value: ndarray, i: int = 1) -> None:
+        """Update the display with the new value.
 
         Args:
-            value (ndarray): The new value.
+            value (ndarra): The new value.
+            i (int): Curve index.
         """
+        self._t[1][i].append(time.time() - self._start)
+        self._v[1][i].append(value.astype(float))
+        if value < Display._min[1]:
+            Display._min[1] = value
+        elif value > Display._max[1]:
+            Display._max[1] = value
+        ylim = (Display._min[1] - self._margin, Display._max[1] + self._margin)
+        Display._tmax[1] = np.max([Display._tmax[1], self._t[1][i][-1]])
+        self._axes[1].set_ylim(*ylim)
+        self._axes[1].set_xlim(0, 1.1 * Display._tmax[1])
+        self._lines[1][i].set_data(self._t[1][i], self._v[1][i])
+        self._draw()
 
     def metrics(self: "Display", **metrics: dict) -> None:
         """Separator line for epochs.
@@ -93,12 +96,12 @@ class Display:
         """
         abs = time.time() - self._start
         color = self._param[-1].get("color", "grey")
-        vline = Display._axes1.axvline(
+        vline = Display._axes[0].axvline(
             abs, color=color, picker=True, zorder=0, alpha=0.25
         )
-        text = Display._axes1.annotate(
+        text = Display._axes[0].annotate(
             Display.format_dict(metrics),
-            xy=(abs, self._max1),
+            xy=(abs, self._max[0]),
             xycoords="data",
             bbox=dict(
                 boxstyle="round,pad=0.3",
@@ -112,8 +115,7 @@ class Display:
         )
         self._pack["click"] += [vline, text]
         self._pack["move"] += [text]
-        plt.draw()
-        plt.pause(1e-15)
+        self._draw()
 
     def _init_display(self: "Display", title: str) -> None:
         """Initialize the display class.
@@ -121,22 +123,50 @@ class Display:
         Args:
             title (str): Title of the display.
         """
-        Display._fig1 = plt.figure(figsize=(16, 9))
-        Display._fig2 = plt.figure(figsize=(16, 9))
-        Display._axes1 = Display._fig1.add_axes((0.1, 0.1, 0.8, 0.8))
-        Display._axes2 = Display._fig2.add_axes((0.1, 0.1, 0.8, 0.8))
-        Display._axes_max_zorder = Display._axes1.zorder
-        for spine in Display._axes1.spines.values():
-            if Display._axes_max_zorder < spine.zorder:
-                Display._axes_max_zorder = spine.zorder
-        Display._min1, Display._max1, Display._tmax = 0, 0, 30
-        Display._min2, Display._max2 = 0, 0
-        Display._fig1.canvas.manager.set_window_title(title)
-        Display._fig2.canvas.manager.set_window_title(title)
-        Display._axes1.set_title(title + " Loss")
-        Display._axes2.set_title(title + " Accuracy")
+        Display._fig = [
+            plt.figure(figsize=(16, 9)), plt.figure(figsize=(8, 4.5))
+        ]
+        Display._axes = [
+            Display._fig[0].add_axes((0.1, 0.1, 0.8, 0.8)),
+            Display._fig[1].add_axes((0.1, 0.1, 0.8, 0.8))
+        ]
+        axis1, axis2 = Display._axes
+        Display._axes_max_zorder = 0
+        for s1, s2 in zip(axis1.spines.values(), axis2.spines.values()):
+            if Display._axes_max_zorder < s1.zorder:
+                Display._axes_max_zorder = s1.zorder
+            if Display._axes_max_zorder < s2.zorder:
+                Display._axes_max_zorder = s2.zorder
+        Display._min, Display._max, Display._tmax = [0, 0], [0, 0], [30, 30]
+        Display._fig[0].canvas.manager.set_window_title(title)
+        Display._fig[1].canvas.manager.set_window_title(title)
+        Display._axes[0].set_title(title)
+        Display._axes[1].set_title(title)
         Display._packs = []
-        Display._fig1.canvas.mpl_connect("pick_event", Display.picker_hook)
+        Display._fig[0].canvas.mpl_connect("pick_event", Display.picker_hook)
+
+    def _create_lines(self: "Display") -> list:
+        """Creates lines structure.
+
+        Returns:
+            list: Lines structure.
+        """
+        return [
+            [
+                self._axes[0].plot(t, v, color=self._,
+                                   picker=True, zorder=0)[0]
+                for t, v, p in zip(self._t[0], self._v[0], self._param)
+            ],
+            [
+                self._axes[1].plot(t, v, **p, picker=True, zorder=0)[0]
+                for t, v, p in zip(self._t[1], self._v[1], self._param)
+            ]
+        ]
+
+    def _draw(self: "Display") -> None:
+        """Draw to the screen."""
+        plt.draw()
+        plt.pause(1e-15)
 
     @staticmethod
     def format_dict(jso: dict) -> str:
@@ -149,6 +179,10 @@ class Display:
         """
         string = ''
         for key, value in jso.items():
+            if isinstance(value, float):
+                value = "{:.2f}".format(value)
+            else:
+                value = str(value)
             string += str(key) + ': ' + str(value) + '\n'
         return string
 
@@ -172,7 +206,7 @@ class Display:
     @staticmethod
     def pause() -> None:
         """Pauses the program until display is closed."""
-        if Display._fig1 is not None:
+        if Display._fig is not None:
             plt.ioff()
             plt.show()
             plt.ion()
