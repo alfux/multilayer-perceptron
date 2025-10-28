@@ -48,6 +48,7 @@ class Teacher:
         self._config = config
         self._display = Display(2, **self._config["display"])
         self._t = datetime.now()
+        self._e = None
 
     @property
     def mlp(self: "Teacher") -> MLP:
@@ -72,15 +73,17 @@ class Teacher:
         self._mlp.postprocess = []
         if self._config["display"]:
             metrics = self._metrics()
-            self._display.loss(metrics["Dloss"], 1)
-            self._display.accuracy(metrics["Dacc"], 1)
+            self._display.loss(metrics["DLoss"], 1)
+            self._display.accuracy(metrics["DAcc"], 1)
         cost = float("+inf")
-        for i in range(self._config["epoch"]):
-            print(f"\nEpoch {i}:")
+        for self._e in range(self._config["epoch"]):
             prev = cost
             cost = self._epoch()
-            if self._early_stopping(i, prev, cost):
+            if self._early_stopping(self._e, prev, cost):
                 self._mlp.revert()
+                metrics = self._metrics()
+                metrics['Epoch'] = "Early Stopping"
+                self._display.metrics(**metrics)
                 break
         self._mlp.preprocess = self._proc.preprocess
         self._mlp.postprocess = self._proc.postprocess
@@ -113,21 +116,22 @@ class Teacher:
         Returns:
             float: The cost at the end of the epoch.
         """
+        print(f"\nEpoch {self._e}:")
         sample = self._sample(self._config["frac"])
         if self._config["display"]:
             for dloss in self._mlp.update(*sample):
                 self._display.loss(dloss[0], 0)
             metrics = self._metrics()
-            self._display.loss(metrics["Dloss"], 1)
-            self._display.accuracy(metrics["Dacc"], 0)
-            self._display.accuracy(metrics["Vacc"], 1)
+            self._display.loss(metrics["DLoss"], 1)
+            self._display.accuracy(metrics["DAcc"], 0)
+            self._display.accuracy(metrics["VAcc"], 1)
             self._display.metrics(**metrics)
         else:
             deque(self._mlp.update(*sample), maxlen=0)
             metrics = self._metrics()
         for field, value in metrics.items():
             print('\t' + field + ": " + str(value))
-        return metrics["Dloss"]
+        return metrics["DLoss"]
 
     def _metrics(self: "Teacher") -> dict:
         """Compute metrics during from training.
@@ -140,12 +144,13 @@ class Teacher:
         vloss, vacc = self._loss_acc(self._vtarget, self._vdata)
         seconds = (datetime.now() - self._t).total_seconds()
         return {
-            "Time":  seconds,
-            "Dloss": dloss,
-            "Vloss": vloss,
-            "Dacc": dacc,
-            "Vacc": vacc,
-            "|Grad|": self._mlp.last_gradient_norm
+            'Time':  seconds,
+            'Epoch': self._e,
+            "DLoss": dloss,
+            "VLoss": vloss,
+            "DAcc": dacc,
+            "VAcc": vacc,
+            "|Grad|": self._mlp.last_gradient_norm,
         }
 
     def _loss_acc(self: "Teacher", target: ndarray, data: ndarray) -> list:
