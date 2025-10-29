@@ -162,10 +162,10 @@ class Display:
             zorder=0)
         dacc = self._axes[1].plot(
             self._i[1][0], self._v[1][0], color=self._color, linewidth=0.5,
-            zorder=0, label=self._name)
+            zorder=0, label=(self._name + " data accuracy"))
         vacc = self._axes[1].plot(
             self._i[1][1], self._v[1][1], color=self._color, linewidth=2,
-            zorder=0)
+            zorder=0, label=(self._name + " validation accuracy"))
         return [[iloss[0], eloss[0]], [dacc[0], vacc[0]]]
 
     def _draw(self: "Display") -> None:

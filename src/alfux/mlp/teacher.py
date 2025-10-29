@@ -45,6 +45,8 @@ class Teacher:
         self._vdata: ndarray = self._proc.vdata
         self._target: ndarray = self._proc.target
         self._vtarget: ndarray = self._proc.vtarget
+        self._prev_loss = float("+inf")
+        self._early_check = config.get("early_stopping", None)
         self._config = config
         self._display = Display(2, **self._config["display"])
         self._t = datetime.now()
@@ -69,21 +71,14 @@ class Teacher:
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
         self._t = datetime.now()
-        self._mlp.preprocess = []
-        self._mlp.postprocess = []
+        self._mlp.preprocess, self._mlp.postprocess = [], []
         if self._config["display"]:
             metrics = self._metrics()
             self._display.loss(metrics["DLoss"], 1)
-            self._display.accuracy(metrics["DAcc"], 1)
-        cost = float("+inf")
+            self._display.accuracy(metrics["DAcc"], 0)
+            self._display.accuracy(metrics["VAcc"], 1)
         for self._e in range(self._config["epoch"]):
-            prev = cost
-            cost = self._epoch()
-            if self._early_stopping(self._e, prev, cost):
-                self._mlp.revert()
-                metrics = self._metrics()
-                metrics['Epoch'] = "Early Stopping"
-                self._display.metrics(**metrics)
+            if self._epoch():
                 break
         self._mlp.preprocess = self._proc.preprocess
         self._mlp.postprocess = self._proc.postprocess
@@ -92,25 +87,27 @@ class Teacher:
             print("\n\tTraining time:", self._training_time)
         return self
 
-    def _early_stopping(
-            self: "Teacher", i: int, prev: float, cost: float
-    ) -> bool:
-        """Stop the algorithm if needed.
+    def _epoch(self: "Teacher") -> bool:
+        """Perform an epoch of the training routine.
 
-        Args:
-            i (int): Epoch iteration.
-            prev (float): The previous cost.
-            cost (float): The current cost.
         Returns:
-            bool: True if the previous cost is lower than the current one.
+            bool: True if early stopping is configured and triggers.
         """
-        return (
-            "early_stopping" in self._config
-            and i > self._config["early_stopping"]
-            and prev < cost
-        )
+        if self._early_check is not None and self._e % self._early_check == 0:
+            loss = self._epoch_update()
+            if self._prev_loss < loss:
+                metrics = self._metrics()
+                metrics['Epoch'] = "Early Stopping"
+                self._display.metrics(**metrics)
+                self._mlp.revert()
+                return True
+            self._prev_loss = loss
+            self._mlp.snap()
+            return False
+        self._epoch_update()
+        return False
 
-    def _epoch(self: "Teacher") -> float:
+    def _epoch_update(self: "Teacher") -> float:
         """Perform an epoch of the training routine.
 
         Returns:
@@ -131,7 +128,7 @@ class Teacher:
             metrics = self._metrics()
         for field, value in metrics.items():
             print('\t' + field + ": " + str(value))
-        return metrics["DLoss"]
+        return metrics["VLoss"]
 
     def _metrics(self: "Teacher") -> dict:
         """Compute metrics during from training.

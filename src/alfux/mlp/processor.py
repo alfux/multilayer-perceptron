@@ -295,6 +295,8 @@ class Processor:
         Returns:
             ndarray: Decoded labels corresponding to each row of ``x``.
         """
+        if not isinstance(uniques, ndarray):
+            uniques = np.array(uniques)
         return uniques[np.argmax(x, axis=1)]
 
     @staticmethod

@@ -16,12 +16,12 @@ dependencies = ["numpy>=2.2.2", "pandas>=2.3.1", "matplotlib>=3.10.0"]
 "Homepage" = "https://github.com/alfux/multilayer-perceptron.git"
 
 [project.scripts]
-condensate = "alfux_mlp.condensate:main"
-separate = "alfux_mlp.separate:main"
-prediction = "alfux_mlp.prediction:main"
-regression = "alfux_mlp.regression:main"
-visualizer = "alfux_mlp.visualizer:main"
-mlp_graph3d = "alfux_mlp.mlp_graph3d:main"
+condensate = "alfux.mlp.condensate:main"
+separate = "alfux.mlp.separate:main"
+teacher = "alfux.mlp.teacher:main"
+prediction = "alfux.mlp.prediction:main"
+visualizer = "alfux.mlp.visualizer:main"
+mlp_graph3d = "alfux.mlp.mlp_graph3d:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

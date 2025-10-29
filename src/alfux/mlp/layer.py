@@ -34,6 +34,7 @@ class Layer:
                 self.eval = self._vect_eval
                 self.wdiff = self._vect_wdiff
                 self._activation = self._neurons.activation
+                self._mono = True
             case _:
                 if len(neurons) != len(weights):
                     print(weights.shape, len(neurons), sep="\n")
@@ -42,14 +43,25 @@ class Layer:
                 self.eval = self._eval
                 self.wdiff = self._wdiff
                 self._activation = self._neurons[0].activation
+                self._mono = False
 
     def __len__(self: "Layer") -> int:
         """Return the number of neurons in the layer."""
         return len(self._matrix)
 
     @property
+    def mono(self: "Layer") -> bool:
+        """Get the mono type of layer.
+
+        Returns:
+            bool: True if the layer is a single vectorial function. False if
+                it is a vector of real functions.
+        """
+        return self._mono
+
+    @property
     def activation(self: "Layer") -> str:
-        """str: Get the activation function's name."""
+        """Get the activation function's name."""
         return self._activation
 
     @property

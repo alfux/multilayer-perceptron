@@ -144,6 +144,7 @@ class MLP:
             } for prepro in self._save_prepro],
             "layers": [{
                 "dimension": layer.W.shape,
+                "mono": layer.mono,
                 "matrix": self.encode_matrix(layer.W),
                 "activation": layer.activation
             } for layer in self._layers],
@@ -184,6 +185,11 @@ class MLP:
         gradient /= data.shape[0]
         self._last_gradient = gradient
 
+    def snap(self: "MLP") -> None:
+        """Snapshot the MLP for revert."""
+        for i, layer in enumerate(self._layers):
+            self._last_matrices[i] = layer.W.copy()
+
     def revert(self: "MLP") -> None:
         """Reverts the mlp to the last computed matrices."""
         for i, layer in enumerate(self._layers):
@@ -223,7 +229,6 @@ class MLP:
             i (int): Layer index.
             gradient (ndarray): Gradient for this layer.
         """
-        self._last_matrices[i] = self._layers[i].W
         self._layers[i].W -= self._lr * gradient
 
     def __update_layer_adam(self: "MLP", i: int, gradient: ndarray) -> None:
@@ -237,7 +242,6 @@ class MLP:
         self._v[i] = self._b2 * self._v[i] + (1 - self._b2) * gradient ** 2
         m = self._m[i] / (1 - self._pb1)
         v = np.sqrt(self._v[i] / (1 - self._pb2)) + 1e-15
-        self._last_matrices[i] = self._layers[i].W
         self._layers[i].W -= self._lr * m / v
 
     @staticmethod
@@ -358,7 +362,7 @@ class MLP:
                     sep = p.split('s', maxsplit=2)
                     prm[i] = struct.unpack(
                         sep[1] + 's', base64.b64decode(sep[2])
-                    )[0]
+                    )[0].decode("utf-8")
         return list(prm)
 
     @staticmethod

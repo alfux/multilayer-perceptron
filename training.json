@@ -1,7 +1,7 @@
 [
   {
     "data": "./datas/data_training.csv",
-    "validation": "./datas/data_training.csv",
+    "validation": "./datas/data_validation.csv",
     "header": false,
     "target": 1,
     "drops": [0],
@@ -12,7 +12,7 @@
     "learning_rate": 1e-3,
     "cost": "CELF",
     "save": "./model1_trained.json",
-    "early_stopping": 20,
+    "early_stopping": 5,
     "display": {
       "name": "Model1",
       "color": "green",
@@ -21,7 +21,7 @@
   },
   {
     "data": "./datas/data_training.csv",
-    "validation": "./datas/data_training.csv",
+    "validation": "./datas/data_validation.csv",
     "header": false,
     "target": 1,
     "drops": [0],
@@ -32,7 +32,7 @@
     "learning_rate": 1e-3,
     "cost": "CELF",
     "save": "./model2_trained.json",
-    "early_stopping": 20,
+    "early_stopping": 5,
     "display": {
       "name": "Model2",
       "color": "orange",

@@ -1,4 +1,4 @@
-"""Public API for the ``alfux_mlp`` package.
+"""Public API for the ``alfux-mlp`` package.
 
 Exports core classes such as ``Neuron``, ``Layer``, ``MLP``, and utilities for
 training, visualization, and statistics.
