@@ -1,0 +1,42 @@
+[
+  {
+    "data": "./datas/data_training.csv",
+    "validation": "./datas/data_training.csv",
+    "header": false,
+    "target": 1,
+    "drops": [0],
+    "epoch": 100,
+    "frac": 0.8,
+    "time": true,
+    "model": "./model1.json",
+    "learning_rate": 1e-3,
+    "cost": "CELF",
+    "save": "./model1_trained.json",
+    "early_stopping": 20,
+    "display": {
+      "name": "Model1",
+      "color": "green",
+      "batch": 1000
+    }
+  },
+  {
+    "data": "./datas/data_training.csv",
+    "validation": "./datas/data_training.csv",
+    "header": false,
+    "target": 1,
+    "drops": [0],
+    "epoch": 100,
+    "frac": 0.8,
+    "time": true,
+    "model": "./model2.json",
+    "learning_rate": 1e-3,
+    "cost": "CELF",
+    "save": "./model2_trained.json",
+    "early_stopping": 20,
+    "display": {
+      "name": "Model2",
+      "color": "orange",
+      "batch": 1000
+    }
+  }
+]

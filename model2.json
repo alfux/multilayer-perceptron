@@ -1,0 +1,47 @@
+{
+  "cost": "CELF",
+  "adam": true,
+  "learning_rate": 1e-3,
+  "preprocess": [
+    {
+      "activation": "normalize",
+      "parameters": [1, 2, [0, 1]]
+    },
+    {
+      "activation": "add_bias",
+      "parameters": []
+    }
+  ],
+  "layers": [
+    {
+      "dimension": [11, 31],
+      "mono": false,
+      "matrix": null,
+      "activation": "LReLU"
+    },
+    {
+      "dimension": [7, 11],
+      "mono": false,
+      "matrix": null,
+      "activation": "LReLU"
+    },
+    {
+      "dimension": [3, 7],
+      "mono": false,
+      "matrix": null,
+      "activation": "sigmoid"
+    },
+    {
+      "dimension": [2, 3],
+      "mono": true,
+      "matrix": null,
+      "activation": "softmax"
+    }
+  ],
+  "postprocess": [
+    {
+      "parameters": [["B", "M"]],
+      "activation": "revonehot"
+    }
+  ]
+}

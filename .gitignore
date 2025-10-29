@@ -5,8 +5,8 @@ venv
 *.jpg
 *.png
 *.pptx
-*.json
 *.mlp
 *.npy
 build
 alfux_mlp.egg-info
+.vscode
