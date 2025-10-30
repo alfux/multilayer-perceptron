@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from alfux.mlp import MLP
+import numpy as np
 import pandas as pd
 from pandas import Series
 
@@ -56,6 +57,18 @@ def prediction_accuracy(target: Series, prediction: Series) -> float:
         return float("NaN")
 
 
+def onehot(data: pd.DataFrame) -> np.ndarray:
+    """Onehot convertion of data labels.
+
+    Args:
+        data (DataFrame): The labels.
+    Returns:
+        ndarray: Onehot conversion.
+    """
+    (uni, inv) = np.unique(data, return_inverse=True)
+    return np.eye(len(uni))[inv.flatten()]
+
+
 def get_args(description: str = "") -> Namespace:
     """Parse command-line arguments.
 
@@ -91,7 +104,10 @@ def main() -> int:
         model = MLP.loadf(av.model)
         df, target = load_data(av.csv, av.target, av.drops, av.header)
         prediciton = Series(model.eval(df.to_numpy()))
+        model.postprocess = []
+        raw_prediction = model.eval(df.to_numpy())
         prediction_accuracy(target, prediciton)
+        print("BCELF: ", model.cost.eval(onehot(target), raw_prediction))
         path = Path(av.csv)
         path = path.with_name(path.stem + "_predicted.csv")
         prediciton.to_csv(path, index=False, header=False)

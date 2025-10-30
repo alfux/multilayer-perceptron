@@ -96,18 +96,17 @@ class Teacher:
         Returns:
             bool: True if early stopping is configured and triggers.
         """
+        loss = self._epoch_update()
         if self._early_check is not None and self._e % self._early_check == 0:
-            loss = self._epoch_update()
             if self._prev_loss < loss:
                 metrics = self._metrics()
                 metrics['Epoch'] = "Early Stopping"
                 self._display.metrics(**metrics)
                 self._mlp.revert()
                 return True
+        if self._prev_loss > loss:
             self._prev_loss = loss
             self._mlp.snap()
-            return False
-        self._epoch_update()
         return False
 
     def _epoch_update(self: "Teacher") -> float:
