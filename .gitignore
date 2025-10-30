@@ -1,7 +1,6 @@
 venv
 *.csv
 *__pycache__
-*.pdf
 *.jpg
 *.png
 *.pptx
