@@ -21,7 +21,7 @@ class Display:
     _axes_max_zorder = None
 
     def __init__(
-            self: "Display", n: int = 1, color: str = "grey",
+            self: "Display", color: str = "grey",
             margin: float = 0.1, name: str = "Display", batch: int = 1000
     ) -> None:
         """Initialize the display.
@@ -34,11 +34,10 @@ class Display:
         if Display._fig is None:
             self._init_display()
         self._name = name
-        self._batch = batch
-        self._curr_batch = 0
+        self._batch, self._curr_batch = batch, 0
         self._margin = margin
-        self._i = [[[0] for _ in range(n)], [[0] for _ in range(n)]]
-        self._v = [[[0] for _ in range(n)], [[0] for _ in range(n)]]
+        self._i = [[[0] for _ in range(3)], [[0] for _ in range(3)]]
+        self._v = [[[0] for _ in range(3)], [[0] for _ in range(3)]]
         self._color = color
         self._lines = self._create_lines()
         self._pack = {"legend": None, "single": set(), "move": set()}
@@ -50,9 +49,11 @@ class Display:
         legend = Display._axes[0].legend()
         lines = legend.get_lines()
         for i, pack in enumerate(Display._packs):
-            pack["legend"] = {lines[i]}
-            lines[i].set_picker(True)
-            lines[i].set_pickradius(5)
+            pack["legend"] = {lines[2 * i], lines[2 * i + 1]}
+            lines[2 * i].set_picker(True)
+            lines[2 * i + 1].set_picker(True)
+            lines[2 * i].set_pickradius(5)
+            lines[2 * i + 1].set_pickradius(5)
         Display._axes[1].legend()
 
     def loss(self: "Display", value: ndarray, i: int = 0) -> None:
@@ -154,9 +155,12 @@ class Display:
         Returns:
             list: Lines structure.
         """
-        eloss = self._axes[0].plot(
+        deloss = self._axes[0].plot(
             self._i[0][0], self._v[0][0], color=self._color, linewidth=2,
             zorder=0, label=self._name)
+        veloss = self._axes[0].plot(
+            self._i[0][0], self._v[0][0], color=self._color, linewidth=2,
+            zorder=0, label=self._name, linestyle="--")
         iloss = self._axes[0].plot(
             self._i[0][1], self._v[0][1], color=self._color, linewidth=0.1,
             zorder=0)
@@ -166,7 +170,7 @@ class Display:
         vacc = self._axes[1].plot(
             self._i[1][1], self._v[1][1], color=self._color, linewidth=2,
             zorder=0, label=(self._name + " validation accuracy"))
-        return [[iloss[0], eloss[0]], [dacc[0], vacc[0]]]
+        return [[iloss[0], deloss[0], veloss[0]], [dacc[0], vacc[0]]]
 
     def _draw(self: "Display") -> None:
         """Draw to the screen."""

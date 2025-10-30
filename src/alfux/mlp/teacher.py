@@ -48,7 +48,7 @@ class Teacher:
         self._prev_loss = float("+inf")
         self._early_check = config.get("early_stopping", None)
         self._config = config
-        self._display = Display(2, **self._config["display"])
+        self._display = Display(**self._config["display"])
         self._t = datetime.now()
         self._e = None
 
@@ -75,6 +75,7 @@ class Teacher:
         if self._config["display"]:
             metrics = self._metrics()
             self._display.loss(metrics["DLoss"], 1)
+            self._display.loss(metrics["VLoss"], 2)
             self._display.accuracy(metrics["DAcc"], 0)
             self._display.accuracy(metrics["VAcc"], 1)
         for self._e in range(self._config["epoch"]):
@@ -120,6 +121,7 @@ class Teacher:
                 self._display.loss(dloss[0], 0)
             metrics = self._metrics()
             self._display.loss(metrics["DLoss"], 1)
+            self._display.loss(metrics["VLoss"], 2)
             self._display.accuracy(metrics["DAcc"], 0)
             self._display.accuracy(metrics["VAcc"], 1)
             self._display.metrics(**metrics)
