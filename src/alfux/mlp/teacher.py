@@ -78,6 +78,8 @@ class Teacher:
             self._display.loss(metrics["VLoss"], 2)
             self._display.accuracy(metrics["DAcc"], 0)
             self._display.accuracy(metrics["VAcc"], 1)
+        print(f"Training shape: {self._data.shape}")
+        print(f"Validation shape: {self._vdata.shape}")
         for self._e in range(self._config["epoch"]):
             if self._epoch():
                 break
