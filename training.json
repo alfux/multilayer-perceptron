@@ -1,7 +1,7 @@
 [
   {
-    "data": "./datas/data_training.csv",
-    "validation": "./datas/data_validation.csv",
+    "data": "data_training.csv",
+    "validation": "data_validation.csv",
     "header": false,
     "target": 1,
     "drops": [0],
@@ -20,8 +20,8 @@
     }
   },
   {
-    "data": "./datas/data_training.csv",
-    "validation": "./datas/data_validation.csv",
+    "data": "data_training.csv",
+    "validation": "data_validation.csv",
     "header": false,
     "target": 1,
     "drops": [0],

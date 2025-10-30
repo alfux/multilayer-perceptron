@@ -9,7 +9,7 @@ description = "Alfux's multilayer perceptron package."
 authors = [{name = "Alexis Fuchs", email = "alexis.t.fuchs@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = ["numpy>=2.2.2", "pandas>=2.3.1", "matplotlib>=3.10.0"]
 
 [project.urls]
