@@ -1,6 +1,6 @@
 {
   "cost": "CELF",
-  "adam": true,
+  "adam": false,
   "learning_rate": 1e-3,
   "preprocess": [
     {
@@ -14,25 +14,25 @@
   ],
   "layers": [
     {
-      "dimension": [11, 31],
-      "mono": false,
-      "matrix": null,
-      "activation": "LReLU"
-    },
-    {
-      "dimension": [7, 11],
-      "mono": false,
-      "matrix": null,
-      "activation": "LReLU"
-    },
-    {
-      "dimension": [3, 7],
+      "dimension": [16, 31],
       "mono": false,
       "matrix": null,
       "activation": "sigmoid"
     },
     {
+      "dimension": [3, 16],
+      "mono": false,
+      "matrix": null,
+      "activation": "LReLU"
+    },
+    {
       "dimension": [2, 3],
+      "mono": false,
+      "matrix": null,
+      "activation": "LReLU"
+    },
+    {
+      "dimension": [2, 2],
       "mono": true,
       "matrix": null,
       "activation": "softmax"

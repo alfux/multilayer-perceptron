@@ -105,7 +105,7 @@ class Display:
             x (float): The abscissa of the vertical line.
         """
         abs = self._i[0][1][-1]
-        Display._axes[0].axvline(abs, color=self._color, zorder=0, alpha=0.25)
+        Display._axes[0].axvline(abs, color=self._color, zorder=0, alpha=0.1)
         text = Display._axes[0].annotate(
             Display.format_dict(metrics),
             xy=(abs, self._max[0] - self._margin * 2),

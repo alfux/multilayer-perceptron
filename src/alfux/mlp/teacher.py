@@ -46,7 +46,7 @@ class Teacher:
         self._target: ndarray = self._proc.target
         self._vtarget: ndarray = self._proc.vtarget
         self._prev_loss = float("+inf")
-        self._early_check = config.get("early_stopping", None)
+        self._early_stopping = config.get("early_stopping", None)
         self._config = config
         self._display = Display(**self._config["display"])
         self._t = datetime.now()
@@ -97,8 +97,9 @@ class Teacher:
             bool: True if early stopping is configured and triggers.
         """
         loss = self._epoch_update()
-        if self._early_check is not None and self._e % self._early_check == 0:
-            if self._prev_loss < loss:
+        if self._early_stopping is not None:
+            trh, rep = self._early_stopping
+            if self._e > trh and self._e % rep == 0 and self._prev_loss < loss:
                 metrics = self._metrics()
                 metrics['Epoch'] = "Early Stopping"
                 self._display.metrics(**metrics)

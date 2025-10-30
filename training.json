@@ -8,13 +8,13 @@
     "epoch": 100,
     "frac": 0.8,
     "time": true,
-    "model": "./model1.json",
+    "model": "./default.json",
     "learning_rate": 1e-3,
     "cost": "CELF",
-    "save": "./model1_trained.json",
-    "early_stopping": 5,
+    "save": "./default_trained.json",
+    "early_stopping": [50, 5],
     "display": {
-      "name": "Model1",
+      "name": "Default",
       "color": "green",
       "batch": 1000
     }
@@ -28,13 +28,13 @@
     "epoch": 100,
     "frac": 0.8,
     "time": true,
-    "model": "./model2.json",
+    "model": "./model_perf1.json",
     "learning_rate": 1e-3,
     "cost": "CELF",
-    "save": "./model2_trained.json",
-    "early_stopping": 5,
+    "save": "./model_perf1_trained.json",
+    "early_stopping": [50, 5],
     "display": {
-      "name": "Model2",
+      "name": "Model_perf1",
       "color": "orange",
       "batch": 1000
     }
