@@ -50,7 +50,7 @@ def prediction_accuracy(target: Series, prediction: Series) -> float:
     if target is not None:
         accuracy = (target == prediction).sum() / len(target)
         accuracy = f"{accuracy * 100:.2f}% ({accuracy})"
-        print("Accuracy by Binary Cross Entropy Loss function = ", accuracy)
+        print("Accuracy: ", accuracy)
         return accuracy
     else:
         print("Accuracy couldn't be computed by lack of target data.")
@@ -105,8 +105,9 @@ def main() -> int:
         df, target = load_data(av.csv, av.target, av.drops, av.header)
         prediciton = Series(model.eval(df.to_numpy()))
         model.postprocess = []
-        bcelf = model.cost.eval(onehot(target), model.eval(df.to_numpy()))
-        print("Binary cross entropy loss function: ", bcelf[0])
+        bcelf = model.cost.eval(onehot(target), model.eval(df.to_numpy()))[0]
+        bcelf = f"{bcelf:.2f} ({bcelf})"
+        print("Binary cross entropy loss function: ", bcelf)
         prediction_accuracy(target, prediciton)
         path = Path(av.csv)
         path = path.with_name(path.stem + "_predicted.csv")
