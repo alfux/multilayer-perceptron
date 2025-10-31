@@ -23,13 +23,13 @@
       "dimension": [24, 24],
       "mono": false,
       "matrix": null,
-      "activation": "sigmoid"
+      "activation": "LReLU"
     },
     {
       "dimension": [24, 24],
       "mono": false,
       "matrix": null,
-      "activation": "sigmoid"
+      "activation": "LReLU"
     },
     {
       "dimension": [24, 24],

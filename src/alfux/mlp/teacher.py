@@ -40,6 +40,8 @@ class Teacher:
         with open(config["model"]) as file:
             model = json.loads(file.read())
         self._mlp: MLP = MLP.loadd(model)
+        if "learning_rate" in config:
+            self._mlp.learning_rate = config["learning_rate"]
         self._process(config, model)
         self._data: ndarray = self._proc.data
         self._vdata: ndarray = self._proc.vdata

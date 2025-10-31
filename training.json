@@ -28,10 +28,10 @@
     "epoch": 100,
     "frac": 0.8,
     "time": true,
-    "model": "./model_perf1.json",
+    "model": "./model_perf.json",
     "learning_rate": 1e-3,
     "cost": "CELF",
-    "save": "./model_perf1_trained.json",
+    "save": "./model_perf_trained.json",
     "early_stopping": [50, 5],
     "display": {
       "name": "Model_perf1",

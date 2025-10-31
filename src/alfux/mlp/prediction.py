@@ -105,9 +105,9 @@ def main() -> int:
         df, target = load_data(av.csv, av.target, av.drops, av.header)
         prediciton = Series(model.eval(df.to_numpy()))
         model.postprocess = []
-        raw_prediction = model.eval(df.to_numpy())
+        bcelf = model.cost.eval(onehot(target), model.eval(df.to_numpy()))
+        print("Binary cross entropy loss function: ", bcelf[0])
         prediction_accuracy(target, prediciton)
-        print("BCELF: ", model.cost.eval(onehot(target), raw_prediction))
         path = Path(av.csv)
         path = path.with_name(path.stem + "_predicted.csv")
         prediciton.to_csv(path, index=False, header=False)
