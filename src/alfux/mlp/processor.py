@@ -33,8 +33,6 @@ class Processor:
             self._vdata: DataFrame = valid.drop([target], axis=1)
         else:
             self._vtarget, self._vdata = None, None
-        constant = (self._data == self._data.iloc[0]).all(axis=0)
-        self._data = self._data.loc[:, ~constant]
         self._stat: DataFrame = Statistics(self._data).stats
         self._unique: ndarray = None
         self._preprocess: list[Callable] = []
@@ -267,6 +265,8 @@ class Processor:
         Returns:
             ndarray: Normalized output.
         """
+        if isinstance(span, ndarray):
+            span[span == 0] = 1
         return b[0] + (b[1] - b[0]) * (x - min) / span
 
     @staticmethod

@@ -1,7 +1,7 @@
 [
   {
     "data": "data_training.csv",
-    "validation": "data_test.csv",
+    "validation": "data_validation.csv",
     "header": false,
     "target": 1,
     "drops": [0],

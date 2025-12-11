@@ -1,0 +1,22 @@
+[
+  {
+    "data": "dataset_training.csv",
+    "validation": "dataset_validation.csv",
+    "header": false,
+    "target": 0,
+    "drops": [],
+    "epoch": 50,
+    "frac": 0.9,
+    "time": true,
+    "model": "./leaf.json",
+    "learning_rate": 1e-3,
+    "cost": "CELF",
+    "save": "./leaf_trained.json",
+    "early_stopping": [30, 5],
+    "display": {
+      "name": "Leaf",
+      "color": "red",
+      "batch": 1000000
+    }
+  }
+]

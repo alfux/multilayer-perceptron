@@ -72,6 +72,8 @@ class Teacher:
         """
         if self._mlp is None:
             raise Teacher.BadTeacher("No MLP loaded.")
+        print(f"Training shape: {self._data.shape}")
+        print(f"Validation shape: {self._vdata.shape}")
         self._t = datetime.now()
         self._mlp.preprocess, self._mlp.postprocess = [], []
         if self._config["display"]:
@@ -80,8 +82,6 @@ class Teacher:
             self._display.loss(metrics["VLoss"], 2)
             self._display.accuracy(metrics["DAcc"], 0)
             self._display.accuracy(metrics["VAcc"], 1)
-        print(f"Training shape: {self._data.shape}")
-        print(f"Validation shape: {self._vdata.shape}")
         for self._e in range(self._config["epoch"]):
             if self._epoch():
                 break
