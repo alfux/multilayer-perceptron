@@ -143,7 +143,10 @@ class Neuron:
     @staticmethod
     def MSE(y: ndarray, x: ndarray) -> ndarray:
         """Mean squared error (MSE)."""
-        return np.sum((y - x) ** 2, keepdims=True) / x.shape[0]
+        return np.sum(
+            np.linalg.norm(y - x, axis=1) ** 2,
+            keepdims=True
+        ) / x.shape[0]
 
     @staticmethod
     def dMSE(y: ndarray, x: ndarray) -> ndarray:

@@ -143,8 +143,8 @@ class Teacher:
             dict: Time, data loss and accuracy, validation loss and accuracy
                 and norm gradient.
         """
-        dloss, dacc = self._loss_acc(self._target, self._data)
-        vloss, vacc = self._loss_acc(self._vtarget, self._vdata)
+        dloss, dacc, dmse = self._loss_acc(self._target, self._data)
+        vloss, vacc, vmse = self._loss_acc(self._vtarget, self._vdata)
         seconds = (datetime.now() - self._t).total_seconds()
         return {
             'Time':  seconds,
@@ -153,27 +153,30 @@ class Teacher:
             "VLoss": vloss,
             "DAcc": dacc,
             "VAcc": vacc,
+            "DMSE": dmse,
+            "VMSE": vmse,
             "|Grad|": self._mlp.last_gradient_norm,
         }
 
     def _loss_acc(self: "Teacher", target: ndarray, data: ndarray) -> list:
-        """Compute data loss and accuracy.
+        """Compute data loss and accuracy and MSE.
 
         Args:
             target (ndarray): The targeted value of the model's output.
             data (ndarray): The input data.
         Returns:
-            list: [loss, accuracy]
+            list: [loss, accuracy, mse]
         """
         out = self._mlp.eval(data)
         loss = self._mlp.cost.eval(target, out)[0]
+        mse = Neuron.MSE(target, out)[0]
         if any(fc[0].__name__ == "revonehot" for fc in self._proc.postprocess):
             out = Processor.revonehot(self._proc.unique, out)
             target = Processor.revonehot(self._proc.unique, target)
             accuracy = (target == out).sum() / out.shape[0]
         else:
             accuracy = Neuron.MSE(target, out)
-        return loss, accuracy
+        return loss, accuracy, mse
 
     def _process(self: "Teacher", config: dict, model: list) -> None:
         """Process datas.
