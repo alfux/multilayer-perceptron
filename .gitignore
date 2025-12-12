@@ -9,3 +9,4 @@ venv
 build
 alfux_mlp.egg-info
 .vscode
+*.lock

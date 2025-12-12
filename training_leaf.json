@@ -6,7 +6,7 @@
     "target": 0,
     "drops": [],
     "epoch": 50,
-    "frac": 0.9,
+    "frac": 0.8,
     "time": true,
     "model": "./leaf.json",
     "learning_rate": 1e-3,
@@ -16,7 +16,7 @@
     "display": {
       "name": "Leaf",
       "color": "red",
-      "batch": 1000000
+      "batch": 10000
     }
   }
 ]

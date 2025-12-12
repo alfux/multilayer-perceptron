@@ -14,37 +14,19 @@
   ],
   "layers": [
     {
-      "dimension": [91, 91],
-      "mono": false,
-      "matrix": null,
-      "activation": "sigmoid"
-    },
-    {
-      "dimension": [65, 91],
+      "dimension": [512, 136],
       "mono": false,
       "matrix": null,
       "activation": "LReLU"
     },
     {
-      "dimension": [33, 65],
+      "dimension": [256, 512],
       "mono": false,
       "matrix": null,
       "activation": "sigmoid"
     },
     {
-      "dimension": [17, 33],
-      "mono": false,
-      "matrix": null,
-      "activation": "LReLU"
-    },
-    {
-      "dimension": [9, 17],
-      "mono": false,
-      "matrix": null,
-      "activation": "sigmoid"
-    },
-    {
-      "dimension": [8, 9],
+      "dimension": [8, 256],
       "mono": true,
       "matrix": null,
       "activation": "softmax"
