@@ -171,8 +171,7 @@ class MLP:
         truth = np.atleast_2d(truth)[:, None, :]
         data = np.atleast_2d(data)[:, None, :]
         gradient = None
-        for (i, (y, x)) in enumerate(zip(truth, data)):
-            print(f"\rPerforming iteration: {i}", end='')
+        for (y, x) in zip(truth, data):
             forward_pass = np.fromiter(self._forward_pass(x), ndarray)
             yield self._cost.eval(y, forward_pass[-1])
             if gradient is None:
@@ -181,7 +180,6 @@ class MLP:
                 gradient += self._backpropagate(y, forward_pass)
             self._pb1 *= self._b1
             self._pb2 *= self._b2
-        print()
         gradient /= data.shape[0]
         self._last_gradient = gradient
 
