@@ -17,7 +17,7 @@ class Layer:
     """
 
     def __init__(
-            self: "Layer", neurons: list[Neuron], weights: ndarray
+        self: "Layer", neurons: list[Neuron], weights: ndarray
     ) -> None:
         """Initialize a layer with neurons and weights.
 
@@ -136,7 +136,7 @@ class Layer:
         x = self._matrix @ x.T
         out = np.zeros((len(self._matrix), len(self._matrix)), float)
         for i in range(len(self._matrix)):
-            out[i, i] = self._neurons[i].diff(x[i])
+            out[i, i] = self._neurons[i].diff(x[i, 0])
         return out
 
 
