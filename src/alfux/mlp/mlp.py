@@ -7,8 +7,8 @@ import traceback
 from typing import Generator, Callable
 
 import numpy as np
-from numpy import ndarray
 import numpy.random as rng
+from numpy import ndarray
 
 from .layer import Layer, Neuron
 from .processor import Processor
@@ -36,10 +36,11 @@ class MLP:
             b2 (float): Adam second moment decay. Defaults to ``0.999``.
             preprocess (list[Callable]): Preprocessing pipeline.
             postprocess (list[Callable]): Postprocessing pipeline.
+            adam (bool): True or False for Adam optimisation.
         """
         self._layers: list[Layer] = layers
-        self._last_matrices: list[ndarray] = [x.W for x in self._layers]
         self._cost: Neuron = cost
+        self._last_matrices: list[ndarray] = [x.W for x in self._layers]
         self._lr: float = kw.get("learning_rate", 1e-3)
         (self._b1, self._b2) = (kw.get("b1", 0.9), kw.get("b2", 0.999))
         (self._pb1, self._pb2) = (self._b1, self._b2)
@@ -56,6 +57,15 @@ class MLP:
     def __len__(self: "MLP") -> int:
         """Return the number of layers in the MLP."""
         return len(self._layers)
+
+    @property
+    def layers(self: "MLP") -> list:
+        """Get the list of the MLP layers.
+
+        Returns:
+            list: Layers of the MLP.
+        """
+        return self._layers
 
     @property
     def preprocess(self: "MLP") -> Callable:
@@ -192,6 +202,33 @@ class MLP:
         """Reverts the mlp to the last computed matrices."""
         for i, layer in enumerate(self._layers):
             layer.W = self._last_matrices[i]
+
+    def copy(self: "MLP") -> "MLP":
+        """Deep copy of this MLP.
+
+        Returns:
+            MLP: A copy of this MLP.
+        """
+        mlp = MLP([layer.copy() for layer in self._layers], self._cost)
+        for i in range(len(self._last_matrices)):
+            mlp._last_matrices[i] = self._last_matrices[i].copy()
+        mlp._lr = self._lr
+        mlp._b1 = self._b1
+        mlp._b2 = self._b2
+        mlp._pb1 = self._pb1
+        mlp._pb2 = self._pb2
+        mlp._m = [m.copy() for m in self._m]
+        mlp._v = [v.copy() for v in self._v]
+        mlp._prepro = self._prepro
+        mlp._save_prepro = self._save_prepro
+        mlp._postpro = self._postpro
+        mlp._save_postpro = self._save_postpro
+        mlp._last_gradient = self._last_gradient
+        if self._update_layer == self.__update_layer_adam:
+            mlp._update_layer = mlp.__update_layer_adam
+        else:
+            mlp._update_layer = mlp.__update_layer
+        return mlp
 
     def _backpropagate(self: "MLP", y: ndarray, input: ndarray) -> ndarray:
         """Backpropagate gradients and update internal moments.

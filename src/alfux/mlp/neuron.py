@@ -67,7 +67,9 @@ class Neuron:
     @staticmethod
     def didentity(x: ndarray) -> ndarray:
         """Derivative of the identity function."""
-        return np.eye(x.shape[-1])
+        if isinstance(x, ndarray):
+            return np.eye(x.shape[-1])
+        return 1
 
     @staticmethod
     def ReLU(x: ndarray) -> ndarray:

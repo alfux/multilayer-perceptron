@@ -37,8 +37,9 @@ class Layer:
                 self._mono = True
             case _:
                 if len(neurons) != len(weights):
-                    print(weights.shape, len(neurons), sep="\n")
-                    raise ValueError("matrix' shape doesn't fit neuron list")
+                    error = "matrix' shape doesn't fit neuron list: "
+                    error += f"matrix: {weights.shape}, neurons: {neurons}"
+                    raise ValueError(error)
                 self._neurons: list[Neuron] = neurons
                 self.eval = self._eval
                 self.wdiff = self._wdiff
@@ -82,6 +83,17 @@ class Layer:
                 matrix then passed through neuron activations.
         """
         pass
+
+    def copy(self: "Layer") -> "Layer":
+        """Deep copy of this layer.
+
+        Returns:
+            Layer: Deep copy of this layer.
+        """
+        if isinstance(self._neurons, list):
+            return Layer(self._neurons.copy(), self._matrix.copy())
+        else:
+            return Layer([self._neurons], self._matrix.copy())
 
     def _vect_eval(self: "Layer", x: ndarray) -> ndarray:
         """Compute output for a single-neuron layer.
