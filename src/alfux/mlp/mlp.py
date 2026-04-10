@@ -147,6 +147,7 @@ class MLP:
         """
         desc = {
             "cost": self._cost.activation,
+            "adam": self._update_layer == self.__update_layer_adam,
             "learning_rate": self._lr,
             "preprocess": [{
                 "parameters": self.encode_parameters(prepro[1]),
