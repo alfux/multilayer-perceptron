@@ -88,7 +88,7 @@ def main() -> int:
         av = get_args(main.__doc__)
         data = [pd.read_csv(av.path + "/" + f) for f in os.listdir(av.path)]
         data = pd.concat(data)
-        data = data.drop(av.drop)
+        data = data.drop(av.drop, axis=1)
         data = data.dropna(how="all", axis=1)
         data = data.dropna(how="any", axis=0)
         data = data.reset_index(drop=True).apply(series_to_numeric)
