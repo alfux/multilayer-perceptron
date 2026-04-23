@@ -97,7 +97,8 @@ def main() -> int:
             z_sub = z_score(z_sub)
             data = data.loc[z_sub.index]
             data[av.z_score] = z_sub
-        data = data.loc[:, (data != data.iloc[0]).any(axis=0)]
+        data: DataFrame = data.loc[:, (data != data.iloc[0]).any(axis=0)]
+        data = data.sample(frac=1)
         data.to_csv(av.save, index=False)
         return 0
     except Exception as err:
