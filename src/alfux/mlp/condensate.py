@@ -22,7 +22,6 @@ def get_args(description: str = "") -> Namespace:
     av = arg.ArgumentParser(description=description)
     av.add_argument("--debug", action="store_true", help="debug mode")
     av.add_argument("path", help="directory containing all csv files")
-    av.add_argument("--ignore", nargs='*', help="ignore feats", default=[])
     message = "columns for z-score process"
     av.add_argument("--z-score", nargs='*', help=message, default=[])
     av.add_argument("--save", default='default.csv', help="save file path")
