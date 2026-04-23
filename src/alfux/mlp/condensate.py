@@ -20,11 +20,12 @@ def get_args(description: str = "") -> Namespace:
         Namespace: Parsed CLI arguments.
     """
     av = arg.ArgumentParser(description=description)
-    av.add_argument("--debug", action="store_true", help="debug mode")
     av.add_argument("path", help="directory containing all csv files")
     message = "columns for z-score process"
     av.add_argument("--z-score", nargs='*', help=message, default=[])
     av.add_argument("--save", default='default.csv', help="save file path")
+    av.add_argument("--drop", default=[], nargs='*', help="drops columns")
+    av.add_argument("--debug", action="store_true", help="debug mode")
     return av.parse_args()
 
 
@@ -86,7 +87,10 @@ def main() -> int:
     try:
         av = get_args(main.__doc__)
         data = [pd.read_csv(av.path + "/" + f) for f in os.listdir(av.path)]
-        data = pd.concat(data).dropna(how="all", axis=1)
+        data = pd.concat(data)
+        data = data.drop(av.drop)
+        data = data.dropna(how="all", axis=1)
+        data = data.dropna(how="any", axis=0)
         data = data.reset_index(drop=True).apply(series_to_numeric)
         if len(av.z_score) > 0:
             z_sub = data[av.z_score]
