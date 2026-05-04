@@ -175,7 +175,7 @@ class Teacher:
             target = Processor.revonehot(self._proc.unique, target)
             accuracy = (target == out).sum() / out.shape[0]
         else:
-            accuracy = Neuron.MSE(target, out)
+            accuracy = Neuron.MSE(target, out)[0]
         return loss, accuracy, mse
 
     def _process(self: "Teacher", config: dict, model: list) -> None:
